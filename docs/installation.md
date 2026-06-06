@@ -1,6 +1,6 @@
 # Installation
 
-Self-host the AuthAI relay. For wiring the SDKs into your app, see [integration.md](./integration.md).
+Deploy one AuthAI relay per app environment. Each relay needs HTTPS, persistent storage, a JWT signing secret, an identity hashing secret, and a public URL your frontend and backend can both reach. For wiring the SDKs into your app, see [integration.md](./integration.md).
 
 ## What you're installing
 
@@ -21,14 +21,16 @@ The **relay** is a small Hono HTTP server that:
 ## Clone and install
 
 ```bash
-git clone https://github.com/your-org/authai
+git clone <repo-url>
 cd authai
 pnpm install
 ```
 
+> AuthAI's packages are not yet published to npm. Until they are, clone the monorepo and use the workspace.
+
 ## Configure
 
-Create `apps/relay-server/.env`:
+Generate secrets **once per environment** and store them in your platform's secret manager. Do not regenerate them on every deploy — rotating either secret breaks user sessions (see [Rotating secrets](#rotating-secrets)).
 
 ```bash
 cat > apps/relay-server/.env <<EOF
@@ -48,11 +50,11 @@ EOF
 | `AUTH_AI_JWT_SECRET`      | yes      | HS256 signing secret for session JWTs. 32+ bytes hex.                                              |
 | `AUTH_AI_IDENTITY_SECRET` | yes      | HMAC-SHA256 secret for hashing user account IDs. 32+ bytes hex. **Must differ from JWT_SECRET.**   |
 | `AUTH_AI_ORIGINATOR`      | yes      | App name shown on the provider consent screens (ChatGPT, Grok, GitHub).                            |
-| `AUTH_AI_DB_DRIVER`       | no       | `sqlite` (default). `postgres` planned.                                                            |
-| `AUTH_AI_DB_URL`          | no       | SQLite path (`./relay.db`) or Postgres URL.                                                        |
+| `AUTH_AI_DB_DRIVER`       | no       | `sqlite` (default). A `postgres` driver is planned but not currently shipped.                      |
+| `AUTH_AI_DB_URL`          | no       | SQLite path (`./relay.db`) or a future Postgres URL.                                               |
 | `AUTH_AI_PORT`            | no       | HTTP port. Defaults to `3000`.                                                                     |
 
-> **Why two secrets?** A leak of one shouldn't compromise the other. `JWT_SECRET` forges sessions; `IDENTITY_SECRET` reverses user IDs. Keep them independent so a partial breach gives the attacker partial damage.
+> **Why two secrets?** A leak of one shouldn't compromise the other. `JWT_SECRET` lets an attacker forge session tokens. `IDENTITY_SECRET` lets an attacker dictionary-attack stored account-id hashes against guessed provider IDs (notably GitHub numeric IDs). Keep them independent so a partial breach gives partial damage.
 
 ## Run
 
@@ -68,6 +70,8 @@ curl http://localhost:3000/
 # {"ok":true,"service":"authai-relay"}
 ```
 
+A full sign-in cycle is then driven from a browser by `@authai/react` — see [integration.md](./integration.md) for the frontend wiring. The relay's `/auth/start` and `/auth/poll/:sessionId` endpoints are designed to be polled by that SDK, not by hand.
+
 ## Security properties
 
 - **Encrypted at rest.** OAuth access + refresh tokens live in SQLite as AES-256-GCM ciphertext. The encryption key for each record is only in that user's JWT. A full DB dump alone cannot decrypt anything.
@@ -75,9 +79,11 @@ curl http://localhost:3000/
 - **Identity hashed.** User IDs returned by `/auth/whoami` are `base64url(HMAC-SHA256(IDENTITY_SECRET, provider || \0 || accountId))`. Opaque, stable, provider-namespaced.
 - **Uniform 401.** Every auth failure mode (missing JWT, bad signature, expired, revoked record, decryption failure, provider mismatch) returns the same `{"error":"unauthorized"}`. No record-existence or decryption oracle.
 
+The full threat model is in [security.md](./security.md).
+
 ## Deploying
 
-The relay is a stateless Hono server. SQLite makes it single-instance by default; switch to Postgres for horizontal scaling.
+The relay is a stateless Hono server. SQLite makes it single-instance by default; horizontal scaling needs a shared `AuthRecordStore`, which today means waiting on the Postgres driver or writing your own.
 
 ### Fly.io (single instance, SQLite)
 
@@ -92,7 +98,7 @@ fly secrets set \
 fly deploy
 ```
 
-### Docker
+### Docker (minimal example, not optimized)
 
 ```dockerfile
 FROM node:22-slim
@@ -102,6 +108,8 @@ RUN corepack enable && pnpm install --frozen-lockfile
 EXPOSE 3000
 CMD ["pnpm", "--filter", "@authai/relay-server", "start"]
 ```
+
+For production, add a `.dockerignore`, a multi-stage build that filters install to the relay workspace, and a non-root user.
 
 ```bash
 docker run -p 3000:3000 \
@@ -116,19 +124,27 @@ docker run -p 3000:3000 \
 ### Verifying production
 
 ```bash
-curl https://your-relay.com/
+curl https://your-relay.example/
 # {"ok":true,"service":"authai-relay"}
 
-curl -X POST https://your-relay.com/auth/start \
+curl -X POST https://your-relay.example/auth/start \
   -H "Content-Type: application/json" \
   -d '{"provider":"openai"}'
-# {"sessionId":"...","provider":"openai","userCode":"...","verificationUrl":"https://auth.openai.com/codex/device", ...}
+# {"sessionId":"...","provider":"openai","userCode":"...","verificationUrl":"https://auth.openai.com/codex/device",...}
 ```
+
+After `/auth/start`, the browser SDK polls `/auth/poll/:sessionId` while the user completes the provider device-code flow. The complete client-driven flow is documented in [integration.md](./integration.md).
 
 ## Rotating secrets
 
-Rotating `JWT_SECRET` invalidates every active session — all users have to sign in again.
+### `JWT_SECRET`
 
-Rotating `IDENTITY_SECRET` changes every user's `user.id` going forward. If your app keyed records by `user.id`, those records are now orphaned. Plan a migration before rotating.
+Rotating invalidates every active AuthAI session immediately. Encrypted records remain in storage, but clients need new JWTs to decrypt and use them, which means every user has to sign in again. There is no rolling-rotation support today.
 
-For an MVP demo with one test user, both rotations are safe (re-sign in, wipe the DB if needed).
+### `IDENTITY_SECRET`
+
+Rotating changes the `user.id` value returned for every account on the next sign-in. If your app's database keys off `user.id`, those records are now orphaned.
+
+**Important:** to compute the new `user.id` ahead of time, you would need each affected provider account ID — which `@authai/server` never gives you. If your app does not separately store provider account IDs, **`IDENTITY_SECRET` rotation is effectively an identity reset**: you'll need a migration plan or a separate user mapping. Treat this rotation as a planned event, not an operational rotation.
+
+For an MVP demo with one or two test users, both rotations are safe: re-sign in, wipe the DB if you want to start clean.

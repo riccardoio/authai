@@ -1,6 +1,6 @@
 # Integration
 
-Wire AuthAI into a frontend + backend app in about 20 lines. For self-hosting the relay, see [installation.md](./installation.md).
+Add AuthAI to a frontend + backend app: render the sign-in UI, send the session JWT to your backend, and create an OpenAI-compatible client from that JWT. For self-hosting the relay, see [installation.md](./installation.md).
 
 ## What you're integrating
 
@@ -11,17 +11,21 @@ The JWT flows: **end-user browser → your backend → AuthAI relay → AI provi
 
 ## Install
 
+> **Status.** `@authai/react` and `@authai/server` are not yet published to npm. The patterns below are how they're meant to be used; until publication, depend on them via pnpm workspaces or by linking from a local clone of the monorepo.
+
+When published:
+
 ```bash
 pnpm add @authai/react @authai/server
 ```
 
-`openai` is an optional peer dependency of `@authai/server`. Install it to get a pre-configured client:
+`openai` is an optional peer dependency of `@authai/server`. Install it on the backend if you want the pre-configured client:
 
 ```bash
 pnpm add openai
 ```
 
-> **Status:** The packages are in this monorepo but not yet published to npm. To use them in an external project today, link from a local clone or vendor them in.
+Without it, you still get `{ user, apiKey, baseURL }` and can construct any OpenAI-compatible client yourself.
 
 ## Frontend
 
@@ -33,7 +37,7 @@ import { AuthAIProvider, SignIn, useAuthAI } from "@authai/react";
 function App() {
   return (
     <AuthAIProvider
-      relayUrl="https://relay.authai.dev"
+      relayUrl="https://your-relay.example"
       appName="My App"
     >
       <Chat />
@@ -44,9 +48,22 @@ function App() {
 function Chat() {
   const { jwt, isSignedIn } = useAuthAI();
   if (!isSignedIn) return <SignIn />;
-  // jwt is the user's session — send it to your backend on each AI request.
+
+  async function ask(messages) {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${jwt}`,
+      },
+      body: JSON.stringify({ messages }),
+    });
+    // res.body is a stream; render the chunks.
+  }
 }
 ```
+
+> **The JWT is a bearer credential carrying decryption material.** Anyone who reads it can drive the user's AuthAI session until it expires or is revoked. In the default `localStorage` configuration, an XSS on your page exposes the JWT. Treat the AuthAI JWT the same way you'd treat any session token: ship a strict CSP, sanitize all user-controlled HTML, and consider `storage="memory"` if you'd rather lose sessions on reload than keep one around for XSS to steal.
 
 ### Provider picker vs preset
 
@@ -110,22 +127,35 @@ The JWT lives client-side. By default it's in `localStorage`; change with the `s
 
 ```tsx
 <AuthAIProvider storage="localStorage">  // default
-<AuthAIProvider storage="memory">        // session-only
-<AuthAIProvider storage={myAdapter}>     // implement TokenStorage
+<AuthAIProvider storage="memory">        // session-only, lost on reload
+<AuthAIProvider storage={myAdapter}>     // see TokenStorage interface
+```
+
+The `TokenStorage` interface:
+
+```ts
+type TokenStorage = {
+  get(): string | null;
+  set(token: string): void;
+  clear(): void;
+};
 ```
 
 ## Backend
 
 ### Sending the JWT from your frontend
 
-Whatever auth pattern your app already uses works — `Authorization` header, cookie, request body. Header example:
+Prefer an `Authorization: Bearer <jwt>` header — that's what the snippets in this guide assume. Cookies also work if your app already handles CSRF and same-site settings. Avoid putting the JWT in a request body unless you have a specific reason: bodies tend to be more loggable and harder to redact than headers.
 
 ```ts
 const { jwt } = useAuthAI();
 await fetch("/api/chat", {
   method: "POST",
-  headers: { "Authorization": `Bearer ${jwt}` },
-  body: JSON.stringify({ model, messages }),
+  headers: {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${jwt}`,
+  },
+  body: JSON.stringify({ messages }),
 });
 ```
 
@@ -136,20 +166,25 @@ import { authai, AuthAIUnauthorized } from "@authai/server";
 
 export async function POST(req) {
   const jwt = req.headers.get("authorization")?.slice("Bearer ".length);
+  const { messages } = await req.json();
 
   try {
     const { user, apiKey, baseURL, openai } = await authai.session({
       jwt,
-      relayUrl: "https://relay.authai.dev",
+      relayUrl: "https://your-relay.example",
     });
 
     // user.id        — opaque, stable across re-sign-ins, namespaced per provider
     // user.provider  — "openai" | "xai" | "github"
-    // openai         — pre-configured client; bill lands on the user's plan
+    // openai         — pre-configured client (requires the openai peer dep)
     // apiKey/baseURL — wire LangChain, AI SDK, or any custom client instead
 
+    if (!openai) {
+      throw new Error("Install the `openai` package to use the pre-configured client.");
+    }
+
     const stream = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: "gpt-5.4", // pick from GET /v1/models on the relay (see below)
       messages,
       stream: true,
     });
@@ -161,6 +196,13 @@ export async function POST(req) {
     throw err;
   }
 }
+```
+
+Available models depend on which provider the user signed in with. Always source them from the relay's `/v1/models` endpoint rather than hard-coding:
+
+```ts
+const models = await openai.models.list();
+const defaultModel = models.data[0]?.id;
 ```
 
 ### `authai.session()` return shape
@@ -193,7 +235,123 @@ authai.session({ jwt, relayUrl, cache: false });
 authai.session({ jwt, relayUrl, cache: redisAdapter });
 ```
 
-> **Cache safety:** Cached identity is non-authoritative. Every `/v1/*` call still goes through the relay, so revocation is enforced even when whoami is cached.
+> **Cache safety.** Cached identity is non-authoritative. Every `/v1/*` call still goes through the relay, so revocation is enforced even when whoami is cached.
+
+## End-to-end example (Next.js App Router)
+
+A minimal working integration in a Next.js 15 app.
+
+**`app/layout.tsx`** — provider at the root:
+
+```tsx
+import { AuthAIProvider } from "@authai/react";
+
+export default function RootLayout({ children }) {
+  return (
+    <html>
+      <body>
+        <AuthAIProvider
+          relayUrl={process.env.NEXT_PUBLIC_AUTHAI_RELAY_URL!}
+          appName="My App"
+        >
+          {children}
+        </AuthAIProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+**`app/page.tsx`** — sign-in + chat:
+
+```tsx
+"use client";
+import { SignIn, useAuthAI } from "@authai/react";
+import { useState } from "react";
+
+export default function Page() {
+  const { jwt, isSignedIn } = useAuthAI();
+  const [reply, setReply] = useState("");
+  const [pending, setPending] = useState(false);
+
+  if (!isSignedIn) return <SignIn>Sign in</SignIn>;
+
+  async function ask(prompt) {
+    setReply(""); setPending(true);
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${jwt}`,
+      },
+      body: JSON.stringify({
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      setReply((r) => r + decoder.decode(value));
+    }
+    setPending(false);
+  }
+
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); ask(new FormData(e.currentTarget).get("p") as string); }}>
+      <input name="p" disabled={pending} />
+      <pre>{reply}</pre>
+    </form>
+  );
+}
+```
+
+**`app/api/chat/route.ts`** — the AI endpoint:
+
+```ts
+import { authai, AuthAIUnauthorized } from "@authai/server";
+
+export const runtime = "nodejs";
+
+export async function POST(req: Request) {
+  const jwt = req.headers.get("authorization")?.slice("Bearer ".length);
+  const { messages } = await req.json();
+
+  try {
+    const { user, openai } = await authai.session({
+      jwt,
+      relayUrl: process.env.AUTHAI_RELAY_URL!,
+    });
+    if (!openai) return new Response("Install `openai`", { status: 500 });
+
+    console.log(`[chat] user=${user.id.slice(0, 8)}… provider=${user.provider}`);
+
+    const stream = await openai.chat.completions.create({
+      model: "gpt-5.4",
+      messages,
+      stream: true,
+    });
+
+    const encoder = new TextEncoder();
+    const body = new ReadableStream({
+      async start(controller) {
+        for await (const chunk of stream) {
+          const delta = chunk.choices[0]?.delta?.content;
+          if (delta) controller.enqueue(encoder.encode(delta));
+        }
+        controller.close();
+      },
+    });
+    return new Response(body, { headers: { "Content-Type": "text/plain" } });
+  } catch (err) {
+    if (err instanceof AuthAIUnauthorized) return new Response("Unauthorized", { status: 401 });
+    throw err;
+  }
+}
+```
+
+Set `NEXT_PUBLIC_AUTHAI_RELAY_URL` (client-visible) and `AUTHAI_RELAY_URL` (server-only) to your relay's public URL, then `next dev`.
 
 ## Using with other AI SDKs
 
@@ -223,22 +381,21 @@ await fetch(`${baseURL}/chat/completions`, {
 
 ## Supported providers
 
-| Provider          | Sign-in mechanism                 | Model list source                     |
-| ----------------- | --------------------------------- | ------------------------------------- |
-| **ChatGPT**       | OAuth device code via Codex CLI   | Documented Codex catalog              |
-| **Grok (xAI)**    | OAuth device code via Grok CLI    | Live `api.x.ai/v1/models`             |
+| Provider          | Sign-in mechanism                 | Model list source                              |
+| ----------------- | --------------------------------- | ---------------------------------------------- |
+| **ChatGPT**       | OAuth device code via Codex CLI   | Documented Codex catalog                       |
+| **Grok (xAI)**    | OAuth device code via Grok CLI    | Live `api.x.ai/v1/models`                      |
 | **GitHub Copilot**| GitHub device code → Copilot token| Live `api.individual.githubcopilot.com/models` |
 
-## Supported endpoints
+## Not supported
 
-The relay speaks OpenAI's wire format. Whichever provider the signed-in user has, the call lands on their plan.
+AuthAI's surface is text chat: `chat.completions`, `responses`, and `models`. Embeddings, vision, audio, batch, assistants, and fine-tunes are **not currently supported** — calls return a structured `unsupported_endpoint` error. The underlying provider OAuth flows either don't expose those surfaces to third-party tools or expose them inconsistently across providers; adding any one of them requires per-provider work.
 
 | Endpoint                       | Status                                                                  |
 | ------------------------------ | ----------------------------------------------------------------------- |
 | `POST /v1/chat/completions`    | Supported. Chat Completions ↔ Codex Responses translated for ChatGPT.   |
 | `POST /v1/responses`           | Supported. Pass-through to Codex Responses.                             |
 | `GET /v1/models`               | Returns the live model catalog scoped to the signed-in provider.        |
-| Embeddings, vision, audio, batch, assistants, fine-tunes | Not available via Codex auth — return a `unsupported_endpoint` error. |
 
 ## Error handling
 
@@ -260,11 +417,11 @@ Model call errors come from the provider directly through the `openai` SDK (e.g.
 
 ## End-to-end checklist
 
-1. Relay is up at `https://relay.authai.dev/` returning `{ok: true}`.
+1. Relay is up at `https://your-relay.example/` and returns `{"ok": true, "service": "authai-relay"}`.
 2. Frontend wraps `<App>` in `<AuthAIProvider>` with that `relayUrl`.
-3. `<SignIn>` button renders the dialog and you reach the provider's device-code page.
+3. `<SignIn>` renders the dialog and reaches the provider's device-code page.
 4. After authorizing, `useAuthAI().jwt` is a non-null string.
-5. Frontend sends `jwt` to your backend on every AI request.
-6. Backend calls `authai.session({ jwt, relayUrl })`, gets `{ user, openai }`.
+5. Frontend sends `jwt` to your backend on every AI request via `Authorization: Bearer …`.
+6. Backend calls `authai.session({ jwt, relayUrl })` and gets `{ user, openai }`.
 7. `openai.chat.completions.create({...})` streams text back.
 8. `user.id` is the same on re-sign-in for the same account.
