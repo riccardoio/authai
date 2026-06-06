@@ -12,6 +12,7 @@ function required(name: string): string {
 }
 
 const jwtSecretHex = required("AUTH_AI_JWT_SECRET");
+const identitySecretHex = required("AUTH_AI_IDENTITY_SECRET");
 const originator = required("AUTH_AI_ORIGINATOR");
 const driver = process.env.AUTH_AI_DB_DRIVER ?? "sqlite";
 const dbUrl = process.env.AUTH_AI_DB_URL ?? "./relay.db";
@@ -28,8 +29,13 @@ if (jwtSecret.length < 32) {
   console.error("AUTH_AI_JWT_SECRET must decode to at least 32 bytes (use `openssl rand -hex 32`).");
   process.exit(1);
 }
+const identitySecret = Buffer.from(identitySecretHex, "hex");
+if (identitySecret.length < 32) {
+  console.error("AUTH_AI_IDENTITY_SECRET must decode to at least 32 bytes (use `openssl rand -hex 32`).");
+  process.exit(1);
+}
 
-const app = createRelayApp({ store, jwtSecret, originator });
+const app = createRelayApp({ store, jwtSecret, identitySecret, originator });
 startBackgroundSweep(store);
 
 serve({ fetch: app.fetch, port }, (info) => {

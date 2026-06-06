@@ -1,15 +1,17 @@
 import { Hono } from "hono";
 import { ulid } from "ulid";
-import { encryptJson, generateRecordKey, sha256Hex } from "./crypto.js";
+import { decryptJson, encryptJson, generateRecordKey, identityId } from "./crypto.js";
 import { issueSessionJwt, verifySessionJwt } from "./jwt.js";
 import { getProvider, isProviderId } from "./providers/registry.js";
 import type { ProviderId } from "./providers/types.js";
+import type { DecryptedRecord } from "./refresh.js";
 import { createSession, getSession, updateSession } from "./sessions.js";
 import type { AuthRecordStore } from "./store.js";
 
 export function createAuthRoutes(deps: {
   store: AuthRecordStore;
   jwtSecret: Uint8Array;
+  identitySecret: Buffer;
   originator: string;
 }): Hono {
   const app = new Hono();
@@ -69,7 +71,8 @@ export function createAuthRoutes(deps: {
         return c.json({ status: "pending" });
       }
       const tokens = result.tokens;
-      const accountIdHash = sha256Hex(tokens.accountId || tokens.access.slice(0, 32));
+      const stableAccountInput = tokens.accountId || tokens.access.slice(0, 32);
+      const accountIdHash = identityId(deps.identitySecret, session.providerId, stableAccountInput);
       const existing = await deps.store.findByAccountHash(accountIdHash);
       const recordKey = generateRecordKey();
       const now = Date.now();
@@ -122,6 +125,50 @@ export function createAuthRoutes(deps: {
       return c.body(null, 204);
     } catch (err) {
       return c.json({ error: errorMessage(err) }, 401);
+    }
+  });
+
+  /**
+   * GET /auth/whoami
+   *
+   * Returns the user identity bound to a session JWT without revealing any
+   * provider-internal account IDs or the underlying OAuth tokens.
+   *
+   * Security notes:
+   *   - All failure modes return identical 401 to avoid a record / decryption /
+   *     provider-mismatch oracle. Server-side logs preserve distinction.
+   *   - identityId is HMAC-SHA256(IDENTITY_SECRET, provider || \0 || accountId),
+   *     namespaced per provider, opaque to the caller, reversible only with the
+   *     identity secret.
+   *   - The endpoint does not refresh OAuth tokens or call the provider.
+   */
+  app.get("/whoami", async (c) => {
+    const fail = () => c.json({ error: "unauthorized" }, 401);
+    const auth = c.req.header("Authorization") || "";
+    const match = auth.match(/^Bearer\s+(.+)$/i);
+    if (!match) return fail();
+
+    try {
+      const verified = await verifySessionJwt(match[1]!, deps.jwtSecret);
+      const record = await deps.store.get(verified.recordId);
+      if (!record) return fail();
+      const decrypted = decryptJson<DecryptedRecord>(verified.recordKey, {
+        iv: record.iv,
+        blob: record.blob,
+      });
+      if (decrypted.provider !== verified.provider) return fail();
+
+      const id = identityId(deps.identitySecret, decrypted.provider, decrypted.accountId);
+      const payload = JSON.parse(
+        Buffer.from(match[1]!.split(".")[1]!, "base64url").toString("utf-8"),
+      ) as { exp?: number };
+
+      return c.json({
+        user: { id, provider: decrypted.provider },
+        session: { expires: typeof payload.exp === "number" ? payload.exp : null },
+      });
+    } catch {
+      return fail();
     }
   });
 

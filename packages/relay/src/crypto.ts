@@ -1,4 +1,4 @@
-import { randomBytes, createHash, createCipheriv, createDecipheriv } from "node:crypto";
+import { randomBytes, createHash, createHmac, createCipheriv, createDecipheriv } from "node:crypto";
 
 const ALG = "aes-256-gcm";
 const KEY_LEN = 32;
@@ -43,4 +43,27 @@ export function decryptJson<T = unknown>(key: Buffer, payload: EncryptedPayload)
 
 export function sha256Hex(input: string): string {
   return createHash("sha256").update(input, "utf-8").digest("hex");
+}
+
+/**
+ * Provider-namespaced opaque identifier for a user account.
+ *
+ * Uses HMAC-SHA256(identitySecret, provider || \0 || accountId) so a database
+ * leak alone cannot dictionary-match low-entropy provider account IDs (notably
+ * GitHub numeric IDs) back to real users. The `provider` namespace prevents
+ * cross-provider account ID collisions from producing the same identityId.
+ */
+export function identityId(
+  identitySecret: Buffer,
+  provider: string,
+  accountId: string,
+): string {
+  if (identitySecret.length < 16) {
+    throw new Error("identity secret must be at least 16 bytes");
+  }
+  const hmac = createHmac("sha256", identitySecret);
+  hmac.update(provider, "utf-8");
+  hmac.update(Buffer.from([0]));
+  hmac.update(accountId, "utf-8");
+  return hmac.digest("base64url");
 }

@@ -1,7 +1,7 @@
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { stream } from "hono/streaming";
-import OpenAI from "openai";
+import { AuthAIUnauthorized, authai } from "@authai/server";
 
 const RELAY_URL = process.env.AUTH_AI_RELAY_URL ?? "http://localhost:3000";
 const PORT = Number(process.env.PORT ?? 4000);
@@ -18,26 +18,38 @@ app.use("*", async (c, next) => {
 
 app.get("/", (c) => c.json({ ok: true, service: "example-backend", relay: RELAY_URL }));
 
-app.get("/models", async (c) => {
-  const auth = c.req.header("Authorization") || "";
-  const match = auth.match(/^Bearer\s+(.+)$/i);
-  if (!match) return c.json({ error: "missing bearer token" }, 401);
-  const jwt = match[1]!;
+function extractJwt(authHeader: string | undefined): string | null {
+  if (!authHeader) return null;
+  const match = authHeader.match(/^Bearer\s+(.+)$/i);
+  return match ? match[1]! : null;
+}
+
+app.get("/me", async (c) => {
+  const jwt = extractJwt(c.req.header("Authorization"));
   try {
-    const openai = new OpenAI({ apiKey: jwt, baseURL: `${RELAY_URL}/v1` });
-    const list = await openai.models.list();
-    return c.json({ data: list.data.map((m) => ({ id: m.id, owned_by: (m as any).owned_by })) });
+    const { user, session } = await authai.session({ jwt, relayUrl: RELAY_URL });
+    return c.json({ user, session });
   } catch (err) {
+    if (err instanceof AuthAIUnauthorized) return c.json({ error: "unauthorized" }, 401);
+    return c.json({ error: err instanceof Error ? err.message : String(err) }, 502);
+  }
+});
+
+app.get("/models", async (c) => {
+  const jwt = extractJwt(c.req.header("Authorization"));
+  try {
+    const { openai } = await authai.session({ jwt, relayUrl: RELAY_URL });
+    if (!openai) return c.json({ error: "openai SDK not installed on the backend" }, 500);
+    const list = await openai.models.list();
+    return c.json({ data: list.data.map((m: any) => ({ id: m.id, owned_by: m.owned_by })) });
+  } catch (err) {
+    if (err instanceof AuthAIUnauthorized) return c.json({ error: "unauthorized" }, 401);
     return c.json({ error: err instanceof Error ? err.message : String(err) }, 502);
   }
 });
 
 app.post("/chat", async (c) => {
-  const auth = c.req.header("Authorization") || "";
-  const match = auth.match(/^Bearer\s+(.+)$/i);
-  if (!match) return c.json({ error: "missing bearer token" }, 401);
-  const jwt = match[1]!;
-
+  const jwt = extractJwt(c.req.header("Authorization"));
   let body: any;
   try {
     body = await c.req.json();
@@ -48,12 +60,10 @@ app.post("/chat", async (c) => {
     return c.json({ error: "model and messages required" }, 400);
   }
 
-  const openai = new OpenAI({
-    apiKey: jwt,
-    baseURL: `${RELAY_URL}/v1`,
-  });
-
   try {
+    const { user, openai } = await authai.session({ jwt, relayUrl: RELAY_URL });
+    if (!openai) return c.json({ error: "openai SDK not installed on the backend" }, 500);
+    console.log(`[chat] user=${user.id.slice(0, 8)}… provider=${user.provider} model=${body.model}`);
     const completion = await openai.chat.completions.create({
       model: body.model,
       messages: body.messages,
@@ -61,14 +71,14 @@ app.post("/chat", async (c) => {
     });
     c.header("Content-Type", "text/plain; charset=utf-8");
     return stream(c, async (s) => {
-      for await (const chunk of completion) {
-        const delta = chunk.choices[0]?.delta?.content;
+      for await (const chunk of completion as any) {
+        const delta = chunk?.choices?.[0]?.delta?.content;
         if (delta) await s.write(new TextEncoder().encode(delta));
       }
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return c.json({ error: message }, 502);
+    if (err instanceof AuthAIUnauthorized) return c.json({ error: "unauthorized" }, 401);
+    return c.json({ error: err instanceof Error ? err.message : String(err) }, 502);
   }
 });
 

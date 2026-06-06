@@ -158,7 +158,7 @@ export function Chat({ jwt, provider, backendUrl, onSignOut }: Props) {
 function ReplyInput({
   onSubmit,
   disabled,
-  placeholder = "Reply…",
+  placeholder = "Send a message…",
 }: {
   onSubmit: (text: string) => void;
   disabled?: boolean;

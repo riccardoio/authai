@@ -21,11 +21,11 @@ export function Step1({
 }: Step1Props) {
   const providerName = presetProvider ? PROVIDER_META[presetProvider].displayName : null;
   const title = providerName
-    ? <>Use {providerName} to power AI in <span className="authai-strong">{appName}</span></>
-    : <>Use your AI subscription to power AI in <span className="authai-strong">{appName}</span></>;
+    ? <>Connect {providerName} to <span className="authai-strong">{appName}</span></>
+    : <>Connect an AI subscription to <span className="authai-strong">{appName}</span></>;
   const body = providerName
-    ? `Sign in to ${providerName} once. ${appName} will run AI requests on your ${providerName} subscription — your existing plan limits apply, no charges to ${appName}.`
-    : `Sign in once. ${appName} will run AI requests on your existing AI subscription — your plan limits apply, no charges to ${appName}.`;
+    ? `Sign in once. ${appName} will use your ${providerName} subscription to run AI features — billed to your existing plan, never to a card you give ${appName}.`
+    : `Sign in once. ${appName} will use your subscription to run AI features — billed to your existing plan, never to a card you give ${appName}.`;
   const continueLabel = ready ? (presetProvider ? "Continue" : "Choose provider") : "Preparing…";
 
   return (

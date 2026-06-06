@@ -26,7 +26,7 @@ export function Step2({
 
   return (
     <div className="authai-step">
-      <h2 className="authai-title">Confirm the code on {providerName}</h2>
+      <h2 className="authai-title">Approve on {providerName}</h2>
 
       <div className="authai-code-row">
         <div className="authai-code-block" aria-label="Authorization code">{userCode}</div>
@@ -43,7 +43,7 @@ export function Step2({
       <p className="authai-code-label">Your authorization code</p>
 
       <p className="authai-muted">
-        Enter this code on {providerName} to finish signing in. We copied it to your clipboard.
+        Paste this code on {providerName} to finish — it's already in your clipboard.
       </p>
 
       {!error && (

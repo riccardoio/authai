@@ -6,6 +6,7 @@ import type { AuthRecordStore } from "./store.js";
 export type RelayConfig = {
   store: AuthRecordStore;
   jwtSecret: Uint8Array;
+  identitySecret: Buffer;
   originator: string;
 };
 
@@ -28,6 +29,7 @@ export function createRelayApp(config: RelayConfig): Hono {
   app.route("/auth", createAuthRoutes({
     store: config.store,
     jwtSecret: config.jwtSecret,
+    identitySecret: config.identitySecret,
     originator: config.originator,
   }));
 
