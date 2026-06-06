@@ -1,25 +1,35 @@
-import { useChatGPTAuth } from "chatgpt-connect/react";
+import { AuthAIProvider, useAuthAI, SignInWithChatGPT } from "@authai/react";
 import { SignInModal } from "./components/SignInModal.js";
 import { Chat } from "./components/Chat.js";
 
 const RELAY_URL = import.meta.env.VITE_RELAY_URL ?? "http://localhost:3000";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? "http://localhost:4000";
 
 export function App() {
-  const auth = useChatGPTAuth({ relayUrl: RELAY_URL, storage: "localStorage" });
+  return (
+    <AuthAIProvider relayUrl={RELAY_URL} storage="localStorage">
+      <Shell />
+    </AuthAIProvider>
+  );
+}
+
+function Shell() {
+  const auth = useAuthAI();
 
   return (
     <div className="container">
-      <h1>chatgpt-connect demo</h1>
-      <p className="muted">Sign in with your ChatGPT subscription. Your tokens, your bill.</p>
+      <h1>AuthAI demo</h1>
+      <p className="muted">
+        Sign in with your ChatGPT subscription. The example backend at{" "}
+        <code>{BACKEND_URL}</code> uses the official <code>openai</code> SDK pointed at the relay.
+      </p>
 
       <div className="card" style={{ marginTop: 24 }}>
-        {auth.status === "signed-in" && auth.client ? (
-          <Chat client={auth.client} onSignOut={auth.signOut} />
+        {auth.isSignedIn ? (
+          <Chat jwt={auth.jwt!} backendUrl={BACKEND_URL} onSignOut={auth.signOut} />
         ) : (
           <div className="col" style={{ gap: 12 }}>
-            <button onClick={auth.signIn} disabled={auth.status === "starting"}>
-              {auth.status === "starting" ? "Starting…" : "Sign in with ChatGPT"}
-            </button>
+            <SignInWithChatGPT>Sign in with ChatGPT</SignInWithChatGPT>
             {auth.status === "error" && (
               <p style={{ color: "#b91c1c", margin: 0 }}>{auth.error}</p>
             )}

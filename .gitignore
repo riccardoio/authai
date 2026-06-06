@@ -13,3 +13,8 @@ openclaw/
 # Excluded for now
 docs/
 README.md
+
+# Local SQLite databases (contain encrypted user records)
+*.db
+*.db-shm
+*.db-wal

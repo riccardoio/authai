@@ -1,5 +1,5 @@
 {
-  "name": "@ai-connect/example-react",
+  "name": "example-react",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "chatgpt-connect": "workspace:*",
+    "@authai/react": "workspace:*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

@@ -1,4 +1,16 @@
-import type { PollResponse, StartResponse, Tokens } from "./types.js";
+export type StartResponse = {
+  sessionId: string;
+  userCode: string;
+  verificationUrl: string;
+  expiresInMs: number;
+  pollIntervalMs: number;
+};
+
+export type PollResponse =
+  | { status: "pending" }
+  | { status: "complete"; jwt: string }
+  | { status: "expired"; error?: string }
+  | { status: "error"; error: string };
 
 export type SignInOptions = {
   relayUrl: string;
@@ -10,9 +22,9 @@ export type SignInOptions = {
   signal?: AbortSignal;
 };
 
-export async function signInWithChatGPT(options: SignInOptions): Promise<Tokens> {
+export async function signInWithChatGPT(options: SignInOptions): Promise<string> {
   const start = await postJson<StartResponse>(
-    join(options.relayUrl, "/auth/start"),
+    joinUrl(options.relayUrl, "/auth/start"),
     undefined,
     options.signal,
   );
@@ -27,34 +39,25 @@ export async function signInWithChatGPT(options: SignInOptions): Promise<Tokens>
   const interval = Math.max(1000, start.pollIntervalMs);
 
   while (Date.now() < deadline) {
-    if (options.signal?.aborted) {
-      throw new DOMException("aborted", "AbortError");
-    }
+    if (options.signal?.aborted) throw new DOMException("aborted", "AbortError");
     await sleep(interval, options.signal);
 
     const poll = await getJson<PollResponse>(
-      join(options.relayUrl, `/auth/poll/${start.sessionId}`),
+      joinUrl(options.relayUrl, `/auth/poll/${start.sessionId}`),
       options.signal,
     );
-
-    if (poll.status === "complete") return poll.tokens;
+    if (poll.status === "complete") return poll.jwt;
     if (poll.status === "error") throw new Error(poll.error || "auth error");
     if (poll.status === "expired") throw new Error("authorization expired");
   }
   throw new Error("authorization timed out");
 }
 
-export async function refreshTokens(
-  relayUrl: string,
-  refresh: string,
-  signal?: AbortSignal,
-): Promise<Tokens> {
-  const res = await postJson<{ tokens: Tokens }>(
-    join(relayUrl, "/auth/refresh"),
-    { refresh_token: refresh },
-    signal,
-  );
-  return res.tokens;
+export async function revokeSession(relayUrl: string, jwt: string): Promise<void> {
+  await fetch(joinUrl(relayUrl, "/auth/revoke"), {
+    method: "POST",
+    headers: { Authorization: `Bearer ${jwt}` },
+  });
 }
 
 async function postJson<T>(url: string, body?: unknown, signal?: AbortSignal): Promise<T> {
@@ -94,6 +97,6 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   });
 }
 
-function join(base: string, path: string): string {
+function joinUrl(base: string, path: string): string {
   return base.replace(/\/+$/, "") + path;
 }

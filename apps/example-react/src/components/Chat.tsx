@@ -1,8 +1,10 @@
 import { useState } from "react";
-import type { Client, ChatMessage } from "chatgpt-connect";
+
+type Msg = { role: "user" | "assistant"; content: string };
 
 type Props = {
-  client: Client;
+  jwt: string;
+  backendUrl: string;
   onSignOut: () => void;
 };
 
@@ -15,8 +17,8 @@ const MODELS = [
   "gpt-5.5-pro",
 ];
 
-export function Chat({ client, onSignOut }: Props) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+export function Chat({ jwt, backendUrl, onSignOut }: Props) {
+  const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [model, setModel] = useState(MODELS[0]);
   const [streaming, setStreaming] = useState(false);
@@ -27,21 +29,31 @@ export function Chat({ client, onSignOut }: Props) {
     if (!text || streaming) return;
     setErr(null);
     setInput("");
-    const next: ChatMessage[] = [...messages, { role: "user", content: text }];
-    setMessages(next);
+    const next: Msg[] = [...messages, { role: "user", content: text }];
+    setMessages([...next, { role: "assistant", content: "" }]);
     setStreaming(true);
 
-    const placeholder: ChatMessage = { role: "assistant", content: "" };
-    setMessages([...next, placeholder]);
-
     try {
+      const res = await fetch(`${backendUrl}/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${jwt}`,
+        },
+        body: JSON.stringify({ model, messages: next }),
+      });
+      if (!res.ok || !res.body) {
+        const text = await res.text().catch(() => "");
+        throw new Error(`backend ${res.status}: ${text}`);
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
       let acc = "";
-      for await (const chunk of client.chat({ model, messages: next })) {
-        if (chunk.delta) {
-          acc += chunk.delta;
-          setMessages([...next, { role: "assistant", content: acc }]);
-        }
-        if (chunk.done) break;
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        acc += decoder.decode(value, { stream: true });
+        setMessages([...next, { role: "assistant", content: acc }]);
       }
     } catch (e) {
       setErr((e as Error).message);

@@ -1,31 +1,26 @@
-import type { Tokens } from "./types.js";
-
 export type TokenStorage = {
-  get(): Tokens | null;
-  set(tokens: Tokens): void;
+  get(): string | null;
+  set(jwt: string): void;
   clear(): void;
 };
 
-const KEY = "chatgpt-connect:tokens";
+const KEY = "authai:jwt";
 
 export function localStorageAdapter(): TokenStorage {
-  if (typeof globalThis.localStorage === "undefined") {
-    return memoryAdapter();
-  }
+  if (typeof globalThis.localStorage === "undefined") return memoryAdapter();
   return {
     get() {
       try {
-        const raw = globalThis.localStorage.getItem(KEY);
-        return raw ? (JSON.parse(raw) as Tokens) : null;
+        return globalThis.localStorage.getItem(KEY);
       } catch {
         return null;
       }
     },
-    set(tokens) {
+    set(jwt) {
       try {
-        globalThis.localStorage.setItem(KEY, JSON.stringify(tokens));
+        globalThis.localStorage.setItem(KEY, jwt);
       } catch {
-        /* swallow quota errors */
+        /* ignore */
       }
     },
     clear() {
@@ -39,11 +34,11 @@ export function localStorageAdapter(): TokenStorage {
 }
 
 export function memoryAdapter(): TokenStorage {
-  let value: Tokens | null = null;
+  let value: string | null = null;
   return {
     get: () => value,
-    set: (t) => {
-      value = t;
+    set: (j) => {
+      value = j;
     },
     clear: () => {
       value = null;

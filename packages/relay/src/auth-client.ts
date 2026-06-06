@@ -1,12 +1,19 @@
 const AUTH_BASE = "https://auth.openai.com";
-const CODEX_CLIENT_ID = process.env.CODEX_CLIENT_ID || "app_EMoamEEZ73f0CkXaXp7hrann";
-const ORIGINATOR = process.env.ORIGINATOR || "ai-connect";
+const CODEX_CLIENT_ID = process.env.AUTH_AI_CODEX_CLIENT_ID || "app_EMoamEEZ73f0CkXaXp7hrann";
+
+function originator(): string {
+  const value = process.env.AUTH_AI_ORIGINATOR;
+  if (!value || value.length === 0) {
+    throw new Error("AUTH_AI_ORIGINATOR is required");
+  }
+  return value;
+}
 
 function headers(contentType: string): Record<string, string> {
   return {
     "Content-Type": contentType,
-    originator: ORIGINATOR,
-    "User-Agent": "ai-connect-relay",
+    originator: originator(),
+    "User-Agent": "authai-relay",
   };
 }
 

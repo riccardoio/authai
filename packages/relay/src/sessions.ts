@@ -1,5 +1,4 @@
 import { randomUUID } from "node:crypto";
-import type { Tokens } from "./openai-client.js";
 
 export type Session = {
   id: string;
@@ -8,7 +7,7 @@ export type Session = {
   pollIntervalMs: number;
   expiresAt: number;
   status: "pending" | "complete" | "expired" | "error";
-  tokens?: Tokens;
+  jwt?: string;
   error?: string;
 };
 
