@@ -9,7 +9,8 @@
     "dev:relay": "pnpm --filter @authai/relay-server dev",
     "dev:example": "pnpm --filter example-react dev",
     "dev:backend": "pnpm --filter example-backend dev",
-    "build": "pnpm -r build"
+    "build": "pnpm -r build",
+    "test": "pnpm -r test"
   },
   "engines": {
     "node": ">=22"
