@@ -90,10 +90,10 @@ export function createOpenAICodexAdapter(): ProviderAdapter {
       } satisfies DeviceCodeStart;
     },
 
-    async pollDeviceCode(state) {
+    async pollDeviceCode(state, originator) {
       const res = await fetch(`${AUTH_BASE}/api/accounts/deviceauth/token`, {
         method: "POST",
-        headers: authHeaders("authai-relay", "application/json"),
+        headers: authHeaders(originator, "application/json"),
         body: JSON.stringify({ device_auth_id: state.deviceAuthId, user_code: state.userCode }),
       });
       if (res.status === 403 || res.status === 404) {
@@ -111,7 +111,7 @@ export function createOpenAICodexAdapter(): ProviderAdapter {
       }
       const exchangeRes = await fetch(`${AUTH_BASE}/oauth/token`, {
         method: "POST",
-        headers: authHeaders("authai-relay", "application/x-www-form-urlencoded"),
+        headers: authHeaders(originator, "application/x-www-form-urlencoded"),
         body: new URLSearchParams({
           grant_type: "authorization_code",
           code: authorizationCode,
@@ -128,10 +128,10 @@ export function createOpenAICodexAdapter(): ProviderAdapter {
       return { status: "ready", tokens };
     },
 
-    async refreshTokens(refresh) {
+    async refreshTokens(refresh, originator) {
       const res = await fetch(`${AUTH_BASE}/oauth/token`, {
         method: "POST",
-        headers: authHeaders("authai-relay", "application/x-www-form-urlencoded"),
+        headers: authHeaders(originator, "application/x-www-form-urlencoded"),
         body: new URLSearchParams({
           grant_type: "refresh_token",
           refresh_token: refresh,

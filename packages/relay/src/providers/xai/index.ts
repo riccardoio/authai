@@ -108,7 +108,7 @@ export function createXaiAdapter(): ProviderAdapter {
       } satisfies DeviceCodeStart;
     },
 
-    async pollDeviceCode(state) {
+    async pollDeviceCode(state, _originator) {
       const { tokenEndpoint } = await getDiscovery();
       const res = await fetch(tokenEndpoint, {
         method: "POST",
@@ -138,7 +138,7 @@ export function createXaiAdapter(): ProviderAdapter {
       throw new Error(`xAI device poll failed: ${res.status} ${err || JSON.stringify(data)}`);
     },
 
-    async refreshTokens(refresh) {
+    async refreshTokens(refresh, _originator) {
       const { tokenEndpoint } = await getDiscovery();
       const res = await fetch(tokenEndpoint, {
         method: "POST",

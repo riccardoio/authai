@@ -99,12 +99,7 @@ export function createV1Routes(deps: {
       wantsStream: body.stream === true,
     });
     if (!result.ok || !result.body) {
-      return c.json(
-        safeJsonParse(result.text) ?? {
-          error: { message: result.text || "provider error", type: "provider_error" },
-        },
-        result.status as 400,
-      );
+      return providerError(c, result.status, result.text, adapter.displayName);
     }
     c.header("Content-Type", result.contentType ?? "text/event-stream");
     c.header("Cache-Control", "no-cache");
@@ -144,12 +139,7 @@ export function createV1Routes(deps: {
       wantsStream: true,
     });
     if (!result.ok || !result.body) {
-      return c.json(
-        safeJsonParse(result.text) ?? {
-          error: { message: result.text || "provider error", type: "provider_error" },
-        },
-        result.status as 400,
-      );
+      return providerError(c, result.status, result.text, adapter.displayName);
     }
     c.header("Content-Type", result.contentType ?? "text/event-stream");
     c.header("Cache-Control", "no-cache");
@@ -216,11 +206,40 @@ function openaiError(c: V1Context, status: number, message: string, type: string
   return c.json({ error: { message, type } }, status as 401);
 }
 
-function safeJsonParse(text: string | undefined): unknown {
-  if (!text) return undefined;
+/**
+ * Wrap an upstream provider failure in the OpenAI error envelope so SDK
+ * consumers see a consistent shape regardless of which provider failed.
+ *
+ * We try to extract a sensible message from the provider body (chatgpt,
+ * x.ai, copilot all use slightly different shapes) but never surface their
+ * raw envelope to the caller — the openai SDK expects { error: { message,
+ * type } } and will throw on anything else.
+ */
+function providerError(
+  c: V1Context,
+  status: number,
+  text: string | undefined,
+  providerDisplayName: string,
+): Response {
+  const message = extractProviderMessage(text) ?? `${providerDisplayName} returned ${status}`;
+  return c.json({ error: { message, type: "provider_error" } }, status as 502);
+}
+
+function extractProviderMessage(text: string | undefined): string | null {
+  if (!text) return null;
   try {
-    return JSON.parse(text);
+    const json: any = JSON.parse(text);
+    // OpenAI / Codex shape
+    if (json?.error?.message) return String(json.error.message);
+    // x.ai / generic
+    if (json?.message) return String(json.message);
+    // GitHub Copilot
+    if (json?.error_details?.message) return String(json.error_details.message);
+    if (json?.detail) return String(json.detail);
   } catch {
-    return undefined;
+    // Not JSON — fall through and return the raw text if it's plausibly
+    // a short status line. Don't echo back giant HTML pages.
+    if (text.length <= 200) return text.trim();
   }
+  return null;
 }

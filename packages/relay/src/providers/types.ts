@@ -42,9 +42,18 @@ export interface ProviderAdapter {
   readonly id: ProviderId;
   readonly displayName: string;
 
+  /** Provider OAuth start. `originator` is the operator-configured app name. */
   requestDeviceCode(originator: string): Promise<DeviceCodeStart>;
-  pollDeviceCode(state: PendingState): Promise<PollResult>;
-  refreshTokens(refreshToken: string): Promise<ProviderTokens>;
+
+  /** Poll device-code state. `originator` carries through from sign-in. */
+  pollDeviceCode(state: PendingState, originator: string): Promise<PollResult>;
+
+  /**
+   * Refresh provider tokens. `originator` comes from the stored record so a
+   * relay can rotate without losing the brand the user originally consented
+   * to. Provider adapters that don't consume `originator` can ignore it.
+   */
+  refreshTokens(refreshToken: string, originator: string): Promise<ProviderTokens>;
 
   listModels(tokens: ProviderTokens): Promise<ProviderModel[]>;
   proxyChatCompletions(params: ProxyParams): Promise<ProxyResult>;

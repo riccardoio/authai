@@ -63,10 +63,13 @@ export function createAuthRoutes(deps: {
 
     try {
       const adapter = getProvider(session.providerId);
-      const result = await adapter.pollDeviceCode({
-        deviceAuthId: session.deviceAuthId,
-        userCode: session.userCode,
-      });
+      const result = await adapter.pollDeviceCode(
+        {
+          deviceAuthId: session.deviceAuthId,
+          userCode: session.userCode,
+        },
+        deps.originator,
+      );
       if (result.status === "pending") {
         return c.json({ status: "pending" });
       }

@@ -1,9 +1,12 @@
 export type ProviderId = "openai" | "xai" | "github";
 
+// Mirror of the /auth/providers response shape. The relay only returns
+// id + displayName today; model lists are scoped per-session and live
+// behind /v1/models. Do not add fields here without a matching server
+// change — consumers will silently see `undefined`.
 export type ProviderInfo = {
   id: ProviderId;
   displayName: string;
-  models: readonly string[];
 };
 
 export type StartResponse = {

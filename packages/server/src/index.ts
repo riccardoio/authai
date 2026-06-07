@@ -1,4 +1,10 @@
 import { createHash } from "node:crypto";
+// The `openai` peer is optional. We import it as a TYPE only — runtime
+// resolution happens via a dynamic import inside tryAttachOpenAI() so users
+// without the package don't see a missing-module error at SDK load time.
+// `import type` is erased at compile time and never produces a require/import
+// call in the emitted JS.
+import type OpenAI from "openai";
 
 export type ProviderId = "openai" | "xai" | "github";
 
@@ -12,7 +18,12 @@ export type AuthAISession = {
   session: { expires: number | null };
   apiKey: string;
   baseURL: string;
-  openai?: any;
+  /**
+   * A pre-configured `openai` SDK instance. Only present when the `openai`
+   * peer dependency is installed; otherwise `undefined`. Always null-check
+   * before using if you support backends without `openai` installed.
+   */
+  openai?: OpenAI;
 };
 
 export type CacheEntry = {
@@ -77,11 +88,18 @@ async function tryAttachOpenAI(
   result: AuthAISession,
 ): Promise<void> {
   try {
-    const mod: any = await import("openai").catch(() => null);
+    const mod = await import("openai").catch(() => null);
     if (!mod) return;
-    const OpenAI = mod.default ?? mod.OpenAI ?? mod;
-    if (typeof OpenAI !== "function") return;
-    result.openai = new OpenAI({ apiKey: result.apiKey, baseURL: result.baseURL });
+    // Resolve the OpenAI constructor across CommonJS interop edge cases.
+    // Type assertion (instead of `any`) keeps the dynamic dispatch contained
+    // to a few lines while still giving consumers the typed result.openai
+    // they declared in AuthAISession.
+    const ctor =
+      (mod as { default?: typeof OpenAI }).default ??
+      (mod as { OpenAI?: typeof OpenAI }).OpenAI ??
+      (mod as unknown as typeof OpenAI);
+    if (typeof ctor !== "function") return;
+    result.openai = new ctor({ apiKey: result.apiKey, baseURL: result.baseURL });
   } catch {
     /* openai not installed; that's fine */
   }

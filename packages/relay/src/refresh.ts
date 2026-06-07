@@ -55,7 +55,13 @@ async function refreshInternal(params: {
   if (!decrypted.refresh) throw new Error("token expired and no refresh token available");
 
   const adapter = getProvider(decrypted.provider);
-  const next = await adapter.refreshTokens(decrypted.refresh);
+  // The originator is whatever the user originally consented to. Preserve
+  // it across token refresh so the upstream provider sees the same brand
+  // instead of "authai-relay" on subsequent rotations.
+  const next = await adapter.refreshTokens(
+    decrypted.refresh,
+    decrypted.originator ?? "authai-relay",
+  );
   const merged: DecryptedRecord = {
     provider: decrypted.provider,
     access: next.access,

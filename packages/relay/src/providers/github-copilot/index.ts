@@ -194,7 +194,7 @@ export function createGitHubCopilotAdapter(): ProviderAdapter {
       } satisfies DeviceCodeStart;
     },
 
-    async pollDeviceCode(state) {
+    async pollDeviceCode(state, _originator) {
       const res = await fetch(ACCESS_TOKEN_URL, {
         method: "POST",
         headers: {
@@ -236,7 +236,7 @@ export function createGitHubCopilotAdapter(): ProviderAdapter {
       };
     },
 
-    async refreshTokens(_refresh) {
+    async refreshTokens(_refresh, _originator) {
       throw new Error(
         "GitHub OAuth device tokens do not refresh; sign in again to reissue",
       );
