@@ -41,6 +41,24 @@ function required(name: string): string {
   return value;
 }
 
+/**
+ * Like `required`, but accepts any of the given names. First non-empty
+ * wins. Used so AUTH_AI_DATABASE_URL coexists with Dokku's
+ * auto-injected DATABASE_URL (Dokku's postgres:link sets DATABASE_URL
+ * and rotates it on credential changes; we read it directly so we
+ * don't have to mirror env vars manually after every rotation).
+ */
+function requiredFromAny(names: string[]): string {
+  for (const name of names) {
+    const v = process.env[name];
+    if (v && v.length > 0) return v;
+  }
+  console.error(
+    `[cloud-relay-server] missing required env var; tried: ${names.join(", ")}`,
+  );
+  process.exit(1);
+}
+
 const edition = resolveEdition(process.env.AUTH_AI_EDITION ?? "cloud");
 if (edition !== "cloud") {
   console.error(
@@ -69,8 +87,8 @@ if (jwtSecret.length < 32 || masterIdentitySecret.length < 32) {
   process.exit(1);
 }
 
-const databaseUrl = required("AUTH_AI_DATABASE_URL");
-const redisUrl = required("AUTH_AI_REDIS_URL");
+const databaseUrl = requiredFromAny(["AUTH_AI_DATABASE_URL", "DATABASE_URL"]);
+const redisUrl = requiredFromAny(["AUTH_AI_REDIS_URL", "REDIS_URL"]);
 const dailyRequestCap = Number(process.env.AUTH_AI_CLOUD_DAILY_CAP ?? "5000");
 
 console.log("[cloud-relay-server] connecting to Postgres + Redis...");

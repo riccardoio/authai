@@ -12,6 +12,22 @@ export function required(name: string): string {
   return v;
 }
 
+/**
+ * First non-empty value among the given env vars. Used so
+ * AUTH_AI_DATABASE_URL coexists with Dokku's auto-injected DATABASE_URL
+ * (postgres:link sets the latter; we read either so a credential
+ * rotation doesn't require manually re-mirroring vars).
+ */
+export function requiredFromAny(names: string[]): string {
+  for (const name of names) {
+    const v = process.env[name];
+    if (v && v.length > 0) return v;
+  }
+  throw new Error(
+    `[cloud-web] missing required env var; tried: ${names.join(", ")}`,
+  );
+}
+
 export function optional(name: string, fallback: string): string {
   return process.env[name] ?? fallback;
 }
