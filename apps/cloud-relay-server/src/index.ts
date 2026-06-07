@@ -28,7 +28,6 @@ import {
   CloudTenantResolver,
   createKillSwitch,
   createRateLimiter,
-  createMemoryCache,
   resolveEdition,
   type KillSwitchEvent,
 } from "@authai/cloud";
@@ -112,7 +111,6 @@ const tenantResolver = new CloudTenantResolver({
   masterIdentitySecret,
   appStore: store.apps,
   cloudOriginator,
-  cache: createMemoryCache({ ttlMs: 30_000 }),
 });
 
 const relayApp = createRelayApp({
@@ -139,12 +137,17 @@ const relayApp = createRelayApp({
       return next();
     },
 
-    // Per-app rate limit on /v1/*. The tenant resolver runs again inside
-    // this middleware so we have the appId before rate-limiting.
+    // Per-app rate limit on /v1/*. This middleware runs BEFORE
+    // @authai/relay's own tenantMiddleware, so we resolve the tenant
+    // here and pin it onto context. tenantMiddleware is idempotent and
+    // skips its own DB call when the tenant is already set — net result
+    // is a single resolve per request even though two middlewares need
+    // the tenant.
     async (c, next) => {
       if (!c.req.path.startsWith("/v1/")) return next();
       const tenant = await tenantResolver.resolve(c);
-      if (!tenant?.appId) return next(); // tenant middleware will 401
+      if (!tenant?.appId) return next(); // tenantMiddleware will 401
+      c.set("tenant", tenant);
       const app = await store.apps.getById(tenant.appId);
       if (!app) return next();
       const decision = await rateLimiter.check(app.id, app.rateLimitPerMin);

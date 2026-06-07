@@ -18,9 +18,14 @@ import type { AuthRecord, AuthRecordStore, UpdatePatch } from "@authai/relay";
  *     and any specific app coexist.
  *
  *   - `apps` is the cloud-edition tenant table. Origin and api_key are
- *     unique. A `revoked_at` column lets us mass-invalidate a tenant's
- *     JWTs without scanning the auth_records table — checking
- *     `jwt.iat * 1000 < apps.revoked_at` at the resolver layer.
+ *     unique. A `revoked_at` column gates subsequent tenant lookups —
+ *     `getByApiKeyHash` and `getByOrigin` already filter `revoked_at IS
+ *     NULL` in SQL, so a revoke from the dashboard takes effect on the
+ *     next request. Existing JWTs minted before revocation keep their
+ *     signature validity until expiry — revoking the app blocks the
+ *     tenant lookup, but a JWT in flight that's about to hit
+ *     /auth/whoami or /v1/* finds no tenant and gets the standard
+ *     uniform 401 from tenantMiddleware.
  *
  *   - `audit_events` is append-only. No update path. `payload` is JSON
  *     (jsonb) so we can read structured fields back later.

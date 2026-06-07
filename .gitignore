@@ -12,6 +12,9 @@ dist
 next-env.d.ts
 *.tsbuildinfo
 
+# Generated reference-md content (apps/cloud-web/scripts/bake-docs.mjs)
+apps/cloud-web/src/lib/generated/
+
 # Reference checkout, not part of this project
 openclaw/
 

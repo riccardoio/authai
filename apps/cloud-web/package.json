@@ -3,7 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
+    "bake:docs": "node scripts/bake-docs.mjs",
+    "predev": "node scripts/bake-docs.mjs",
     "dev": "next dev -p 4000",
+    "prebuild": "node scripts/bake-docs.mjs",
     "build": "next build",
     "start": "next start -p 4000"
   },

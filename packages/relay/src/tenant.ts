@@ -80,6 +80,11 @@ export class StaticTenantResolver implements TenantResolver {
  * Cloud resolvers may return null (e.g. unknown Origin); the middleware
  * surfaces that as a uniform 401 so /auth/* and /v1/* share a single
  * authentication-failure shape (no oracle).
+ *
+ * Idempotent: if a deploy-app middleware already resolved the tenant and
+ * set it on context (e.g., the cloud relay's per-app rate limiter needs
+ * the tenant earlier in the chain), this middleware sees the existing
+ * value and skips its own DB lookup. Avoids resolving twice per request.
  */
 export function tenantMiddleware(resolver: TenantResolver) {
   return async (c: Context, next: () => Promise<void>) => {
@@ -89,6 +94,13 @@ export function tenantMiddleware(resolver: TenantResolver) {
     if (c.req.method === "OPTIONS") {
       return next();
     }
+    // Hono's ContextVariableMap has `tenant` typed as required (the
+    // module augmentation below) but `c.get` may legitimately return
+    // undefined when the key was never set. Cast through unknown so we
+    // can check without TS narrowing screaming about a always-truthy
+    // expression.
+    const existing = (c.get("tenant") as unknown) as Tenant | undefined;
+    if (existing) return next();
     const tenant = await resolver.resolve(c);
     if (!tenant) {
       // Match the uniform-401 contract used by /auth/whoami and /v1/*.

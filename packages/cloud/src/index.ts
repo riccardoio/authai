@@ -19,8 +19,8 @@
  * They share data, not code paths.
  */
 
-export { CloudTenantResolver, createMemoryCache } from "./tenant.js";
-export type { CloudTenantConfig, TenantCache } from "./tenant.js";
+export { CloudTenantResolver } from "./tenant.js";
+export type { CloudTenantConfig } from "./tenant.js";
 
 export {
   derivePerAppIdentitySecret,

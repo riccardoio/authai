@@ -12,8 +12,8 @@ export type CloudTenantConfig = {
   masterIdentitySecret: Buffer;
 
   /**
-   * The apps table backing the resolver. Same one written to by the admin
-   * routes.
+   * The apps table backing the resolver. Same one written to by the
+   * webapp.
    */
   appStore: AppStore;
 
@@ -26,39 +26,7 @@ export type CloudTenantConfig = {
    * which is a v2 problem.
    */
   cloudOriginator: string;
-
-  /**
-   * Optional in-memory cache for resolved tenants. Lookups by Origin or
-   * api key on every request would hammer Postgres; a 30s TTL is plenty.
-   * Pass null to disable caching (useful in tests).
-   */
-  cache?: TenantCache | null;
 };
-
-export interface TenantCache {
-  get(key: string): Tenant | null;
-  set(key: string, value: Tenant): void;
-}
-
-export function createMemoryCache(opts: { ttlMs?: number } = {}): TenantCache {
-  const ttl = opts.ttlMs ?? 30_000;
-  type Entry = { value: Tenant; expiresAt: number };
-  const map = new Map<string, Entry>();
-  return {
-    get(key) {
-      const entry = map.get(key);
-      if (!entry) return null;
-      if (Date.now() > entry.expiresAt) {
-        map.delete(key);
-        return null;
-      }
-      return entry.value;
-    },
-    set(key, value) {
-      map.set(key, { value, expiresAt: Date.now() + ttl });
-    },
-  };
-}
 
 /**
  * Cloud-edition resolver. Looks up the app row by either:
@@ -68,31 +36,30 @@ export function createMemoryCache(opts: { ttlMs?: number } = {}): TenantCache {
  *
  * Returns null if no match → uniform 401 at the tenant middleware.
  *
- * The resolver does NOT enforce origin verification (verified vs
- * ephemeral bucket); that's enforced by the rate-limit middleware
- * downstream, which reads tenant.appId to apply per-app limits.
+ * No caching — every request hits the apps table. The lookups are
+ * point reads against unique indexes (`api_key_hash` and `origin`) and
+ * cost ~1ms on warm Postgres. Adding a cache reintroduces the revocation
+ * problem the eng-review surfaced (a builder revokes via the dashboard
+ * but the relay keeps serving them for the cache TTL). When traffic is
+ * high enough to warrant caching, the right fix is a Redis pub/sub
+ * channel invalidating relay nodes on revoke — not a TTL.
  */
 export class CloudTenantResolver implements TenantResolver {
   constructor(private readonly config: CloudTenantConfig) {}
 
   async resolve(c: Context): Promise<Tenant | null> {
-    const cache = this.config.cache;
-
     // Preference 1: explicit AuthAI Cloud key in header. The builder
     // backend sends this on every /v1/* call (it's the AUTH_AI_KEY
     // they wrote to .env from the npx CLI).
     const apiKey = c.req.header("x-authai-key");
     if (apiKey) {
-      const cacheKey = `k:${apiKey}`;
-      const cached = cache?.get(cacheKey);
-      if (cached) return cached;
-
       const hash = hashApiKey(apiKey);
       const app = await this.config.appStore.getByApiKeyHash(hash);
+      // appStore.getByApiKeyHash already excludes revoked apps via
+      // `revoked_at IS NULL` in the SQL — a revoke from the dashboard
+      // takes effect on the very next request.
       if (!app) return null;
-      const tenant = this.buildTenant(app.id);
-      cache?.set(cacheKey, tenant);
-      return tenant;
+      return this.buildTenant(app.id);
     }
 
     // Preference 2: Origin header lookup. Browser sign-in flows arrive at
@@ -107,15 +74,9 @@ export class CloudTenantResolver implements TenantResolver {
     const rawOrigin = c.req.header("origin");
     const origin = rawOrigin ? normalizeOrigin(rawOrigin) : null;
     if (origin) {
-      const cacheKey = `o:${origin}`;
-      const cached = cache?.get(cacheKey);
-      if (cached) return cached;
-
       const app = await this.config.appStore.getByOrigin(origin);
       if (!app) return null;
-      const tenant = this.buildTenant(app.id);
-      cache?.set(cacheKey, tenant);
-      return tenant;
+      return this.buildTenant(app.id);
     }
 
     // Neither header — no tenant; middleware returns uniform 401.
