@@ -52,15 +52,30 @@ export async function setOneTimeKey(apiKey: string): Promise<void> {
 }
 
 /**
- * Read AND delete the cookie atomically — the key is single-use. A page
- * refresh after consumption sees `null` and shows a "key already
- * displayed" message instead of rendering it again.
+ * Read the key out of the cookie. We deliberately do NOT delete the
+ * cookie here — Next.js's App Router only allows cookie mutations from
+ * Server Actions and Route Handlers, not from Server Components, and
+ * the page that consumes this IS a Server Component.
+ *
+ * Self-expiry semantics:
+ *   - The cookie's `maxAge` is 5 minutes; the JWT inside also expires
+ *     after 5 minutes. After that, this function returns null on its
+ *     own and the page falls through to the "key already displayed"
+ *     message.
+ *   - The user CAN refresh the page within 5 minutes and see the key
+ *     again. That's harmless: the cookie is HttpOnly + scoped to their
+ *     own session, and the relay's stored value is just the SHA-256
+ *     hash — there's no "the relay loses the ability to recover the
+ *     plaintext if we keep showing it" property to preserve.
+ *
+ * If we ever need hard single-use semantics (e.g., second display
+ * forbidden), promote the consume path into a Server Action that runs
+ * on form submission and can mutate cookies.
  */
-export async function consumeOneTimeKey(): Promise<string | null> {
+export async function readOneTimeKey(): Promise<string | null> {
   const c = await cookies();
   const token = c.get(COOKIE_NAME)?.value;
   if (!token) return null;
-  c.delete(COOKIE_NAME);
   try {
     const { payload } = await jwtVerify(token, secret(), { algorithms: ["HS256"] });
     const key = typeof payload.k === "string" ? payload.k : null;

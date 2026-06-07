@@ -2,7 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { getStore } from "@/lib/db";
-import { consumeOneTimeKey } from "@/lib/one-time-key";
+import { readOneTimeKey } from "@/lib/one-time-key";
+import { AutoSubmit } from "./auto-submit";
 
 /**
  * `/apps/[id]/created` — the one-time post-create page.
@@ -33,7 +34,7 @@ export default async function CreatedPage({
   const app = await store.apps.getById(id);
   if (!app || app.ownerGithubId !== session.githubUserId) redirect("/dashboard");
 
-  const key = await consumeOneTimeKey();
+  const key = await readOneTimeKey();
   const isCli = sp.cli === "1";
 
   if (!key) {
@@ -107,11 +108,7 @@ export default async function CreatedPage({
               Send key to terminal
             </button>
           </form>
-          <script
-            dangerouslySetInnerHTML={{
-              __html: "document.getElementById('cb').submit();",
-            }}
-          />
+          <AutoSubmit formId="cb" />
           <p className="muted" style={{ marginTop: 24 }}>
             If your terminal session was lost, copy this key into your
             <code> .env </code> manually:

@@ -30,19 +30,38 @@ if (subcommand === "init") {
   process.exit(1);
 }
 
+/**
+ * Accepts both `--flag value` and `--flag=value` shapes. Unknown flags
+ * throw. We deliberately avoid `--env-file` as a flag name because
+ * Node 22's built-in `--env-file=<path>` claims the same string in
+ * argv before the script even runs — pass `--out <path>` instead.
+ */
 function parseInitFlags(rest: string[]): InitOptions {
   const opts: InitOptions = {};
   for (let i = 0; i < rest.length; i++) {
     const arg = rest[i]!;
-    if (arg === "--force") opts.force = true;
-    else if (arg === "--webapp") opts.webappUrl = rest[++i];
-    else if (arg === "--relay") opts.relayUrl = rest[++i];
-    else if (arg === "--env-file") opts.envFile = rest[++i];
-    else {
-      throw new Error(`unknown flag: ${arg}`);
-    }
+    const [name, inlineValue] = arg.startsWith("--")
+      ? splitInlineFlag(arg)
+      : [arg, undefined];
+    const takeValue = (): string => {
+      if (inlineValue !== undefined) return inlineValue;
+      const next = rest[++i];
+      if (next === undefined) throw new Error(`${name} requires a value`);
+      return next;
+    };
+    if (name === "--force") opts.force = true;
+    else if (name === "--webapp") opts.webappUrl = takeValue();
+    else if (name === "--relay") opts.relayUrl = takeValue();
+    else if (name === "--out") opts.envFile = takeValue();
+    else throw new Error(`unknown flag: ${name}`);
   }
   return opts;
+}
+
+function splitInlineFlag(arg: string): [string, string | undefined] {
+  const eq = arg.indexOf("=");
+  if (eq === -1) return [arg, undefined];
+  return [arg.slice(0, eq), arg.slice(eq + 1)];
 }
 
 function printHelp(): void {
@@ -55,7 +74,7 @@ function printHelp(): void {
   console.log(`Flags:`);
   console.log(`  --webapp <url>      AuthAI Cloud webapp URL (default: https://cloud.authai.dev)`);
   console.log(`  --relay <url>       AuthAI Cloud relay URL (default: https://relay.authai.dev)`);
-  console.log(`  --env-file <path>   write AUTH_AI_KEY to this file (default: ./.env)`);
-  console.log(`  --force             overwrite an existing AUTH_AI_KEY in the env file\n`);
+  console.log(`  --out <path>        write AUTH_AI_KEY to this file (default: ./.env)`);
+  console.log(`  --force             overwrite an existing AUTH_AI_KEY in the file\n`);
   console.log(`Docs: https://cloud.authai.dev/docs\n`);
 }
