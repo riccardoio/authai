@@ -1719,3 +1719,37 @@ a { color: inherit; }
     padding-top: 64px;
   }
 }
+
+/* === Landing trust line (under the npx preset block) === */
+.landing-trust {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 24px 0 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-muted);
+  max-width: 520px;
+}
+.landing-trust svg {
+  flex-shrink: 0;
+  color: var(--text-subtle);
+}
+.landing-trust-link {
+  color: var(--accent);
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.landing-trust-link:hover {
+  text-decoration: underline;
+}
+.landing[data-theme="dark"] .landing-trust {
+  color: rgba(255, 255, 255, 0.55);
+}
+.landing[data-theme="dark"] .landing-trust svg {
+  color: rgba(255, 255, 255, 0.5);
+}
+.landing[data-theme="dark"] .landing-trust-link {
+  color: #5aa6ff;
+}
