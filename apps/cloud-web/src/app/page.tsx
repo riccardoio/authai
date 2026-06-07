@@ -13,7 +13,7 @@ export default function HomePage() {
       <pre><code>npx authai-cloud init</code></pre>
       <p>
         Opens this site to sign in with GitHub, prompts for an app name and
-        origin, then writes <code>AUTH_AI_KEY</code> to your <code>.env</code>.
+        origin, then writes <code>AUTH_AI_SECRET</code> to your <code>.env</code>.
       </p>
 
       <p>

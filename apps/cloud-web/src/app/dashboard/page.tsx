@@ -38,7 +38,7 @@ export default async function Dashboard() {
         {apps.length === 0 && (
           <div className="card">
             <p className="muted" style={{ margin: 0 }}>
-              No apps yet. Create one to get an <code>AUTH_AI_KEY</code>.
+              No apps yet. Create one to get an <code>AUTH_AI_SECRET</code>.
             </p>
           </div>
         )}

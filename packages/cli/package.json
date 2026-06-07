@@ -1,7 +1,7 @@
 {
   "name": "authai-cloud",
   "version": "0.1.0",
-  "description": "AuthAI Cloud — one-command setup. `npx authai-cloud init` registers your app and writes AUTH_AI_KEY to .env.",
+  "description": "AuthAI Cloud — one-command setup. `npx authai-cloud init` registers your app and writes AUTH_AI_SECRET to .env.",
   "homepage": "https://cloud.authai.dev",
   "repository": {
     "type": "git",

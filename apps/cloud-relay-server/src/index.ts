@@ -4,7 +4,7 @@
  * Wires:
  *   - Postgres-backed store (auth records + apps + audit_events)
  *   - Redis-backed kill switch + per-app rate limiter
- *   - CloudTenantResolver pulling tenant from x-authai-key or Origin header
+ *   - CloudTenantResolver pulling tenant from x-authai-secret or Origin header
  *   - The /auth/* and /v1/* relay routes via @authai/relay
  *
  * App registration, dashboard, and builder identity live in apps/cloud-web

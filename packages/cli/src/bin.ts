@@ -4,7 +4,7 @@
  *
  * Subcommands:
  *   init      open the browser, run the AuthAI Cloud webapp flow,
- *             write AUTH_AI_KEY to .env
+ *             write AUTH_AI_SECRET to .env
  *   help      print usage
  */
 
@@ -69,12 +69,12 @@ function printHelp(): void {
   console.log(`Usage:\n  npx authai-cloud init [flags]\n`);
   console.log(`What it does:`);
   console.log(`  Opens your browser to AuthAI Cloud, signs you in with GitHub,`);
-  console.log(`  lets you create an app, and writes the resulting AUTH_AI_KEY`);
+  console.log(`  lets you create an app, and writes the resulting AUTH_AI_SECRET`);
   console.log(`  to your project's .env file.\n`);
   console.log(`Flags:`);
   console.log(`  --webapp <url>      AuthAI Cloud webapp URL (default: https://cloud.authai.dev)`);
   console.log(`  --relay <url>       AuthAI Cloud relay URL (default: https://relay.authai.dev)`);
-  console.log(`  --out <path>        write AUTH_AI_KEY to this file (default: ./.env)`);
-  console.log(`  --force             overwrite an existing AUTH_AI_KEY in the file\n`);
+  console.log(`  --out <path>        write AUTH_AI_SECRET to this file (default: ./.env)`);
+  console.log(`  --force             overwrite an existing AUTH_AI_SECRET in the file\n`);
   console.log(`Docs: https://cloud.authai.dev/docs\n`);
 }

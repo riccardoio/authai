@@ -147,7 +147,7 @@ If you don't want to run the relay yourself, the same code is hosted as a free s
 ```bash
 npx authai-cloud init
 # → opens cloud.authai.dev in your browser to sign in with GitHub,
-#   create an app, and writes AUTH_AI_KEY=... to .env
+#   create an app, and writes AUTH_AI_SECRET=... to .env
 ```
 
 Then in your backend:
@@ -158,9 +158,11 @@ import OpenAI from "openai";
 const openai = new OpenAI({
   apiKey: jwt,
   baseURL: "https://relay.authai.dev/v1",
-  defaultHeaders: { "x-authai-key": process.env.AUTH_AI_KEY! },
+  defaultHeaders: { "x-authai-secret": process.env.AUTH_AI_SECRET! },
 });
 ```
+
+`AUTH_AI_SECRET` is a per-app credential — keep it server-side, never ship it to the browser, never commit it. Lose it and the only recovery is to revoke the app and create a new one (the relay stores only a hash).
 
 Two domains:
 

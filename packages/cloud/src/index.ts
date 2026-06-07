@@ -9,7 +9,7 @@
  * primitives the webapp doesn't:
  *
  *   - CloudTenantResolver (per-request tenant lookup by Origin or
- *     x-authai-key header)
+ *     x-authai-secret header)
  *   - HKDF per-app identitySecret derivation
  *   - Kill switch state machine + per-app rate limiter
  *   - DNS TXT origin verification

@@ -121,7 +121,7 @@ end-user browser              AuthAI relay                  provider (ChatGPT / 
        │    jwt: "…" }              │
 ```
 
-In the cloud edition, `/auth/start` resolves a tenant by `Origin` header (browser) or `x-authai-key` header (backend) BEFORE the device-code call. The sessionId is bound to that tenant; subsequent polls under a different tenant return 404 (cross-tenant session theft guard).
+In the cloud edition, `/auth/start` resolves a tenant by `Origin` header (browser) or `x-authai-secret` header (backend) BEFORE the device-code call. The sessionId is bound to that tenant; subsequent polls under a different tenant return 404 (cross-tenant session theft guard).
 
 ## Per-request flow (model call)
 
@@ -132,7 +132,7 @@ end-user                  builder's backend                AuthAI relay         
    │ ────────────────────────────►│                            │                          │
    │                              │  POST /v1/chat/completions │                          │
    │                              │  Authorization: Bearer JWT │                          │
-   │                              │  x-authai-key: <key>       │  (cloud only)            │
+   │                              │  x-authai-secret: <sec>    │  (cloud only)            │
    │                              │ ──────────────────────────►│                          │
    │                              │                            │  1. resolve tenant       │
    │                              │                            │  2. verify JWT (HS256)   │
@@ -153,7 +153,7 @@ OAuth tokens never leave the relay process. The builder's backend sees only the 
 
 `CloudTenantResolver` in `packages/cloud/src/tenant.ts` is the per-request lookup. It checks two headers in order:
 
-1. `x-authai-key` — used by backend-to-backend calls to `/v1/*`. This is the `AUTH_AI_KEY` the builder wrote to `.env` via `npx authai-cloud init`.
+1. `x-authai-secret` — used by backend-to-backend calls to `/v1/*`. This is the `AUTH_AI_SECRET` the builder wrote to `.env` via `npx authai-cloud init`. The header name + the env name are deliberately "secret" rather than "key" so the value's sensitivity is obvious at both layers (env file + wire format).
 2. `Origin` — used by browser flows to `/auth/start`. Matched against the app's registered origin.
 
 Missing or unknown → null → uniform 401 from `tenantMiddleware`.
@@ -209,7 +209,7 @@ Append-only. No update path. Retention defaults to 13 months; the operator wires
 `apps` (one row per registered app):
 ```
 id                    PRIMARY KEY
-api_key_hash          UNIQUE (SHA-256 of the AUTH_AI_KEY shown once at creation)
+api_key_hash          UNIQUE (SHA-256 of the AUTH_AI_SECRET shown once at creation)
 origin                UNIQUE (full URL — scheme + host + optional port)
 name                  (1-80 chars, shown on consent screen)
 owner_github_id       (creator's GitHub numeric id)

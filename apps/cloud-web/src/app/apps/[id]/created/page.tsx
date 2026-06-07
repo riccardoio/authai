@@ -110,11 +110,12 @@ export default async function CreatedPage({
           </form>
           <AutoSubmit formId="cb" />
           <p className="muted" style={{ marginTop: 24 }}>
-            If your terminal session was lost, copy this key into your
-            <code> .env </code> manually:
+            If your terminal session was lost, copy this secret into your
+            <code> .env </code> manually. Treat it like a password — never
+            commit it or share it.
           </p>
           <pre>
-            <code>AUTH_AI_KEY={key}</code>
+            <code>AUTH_AI_SECRET={key}</code>
           </pre>
         </main>
       </>
@@ -135,13 +136,14 @@ export default async function CreatedPage({
       <main>
         <h1>App created</h1>
 
-        <h2>Your API key</h2>
+        <h2>Your AuthAI secret</h2>
         <p className="muted">
           Shown once. The relay stores only a hash — we can't recover this
-          for you later. Treat it like a password.
+          for you later. Treat it like a password: keep it server-side,
+          never commit it to git, never paste it in a chat.
         </p>
         <pre>
-          <code>AUTH_AI_KEY={key}</code>
+          <code>AUTH_AI_SECRET={key}</code>
         </pre>
 
         <h2>Next steps</h2>

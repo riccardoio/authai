@@ -10,7 +10,7 @@
  *      the body. POST bodies don't enter browser history, server access
  *      logs, or screenshot-shareable URLs — the API key never appears in
  *      a URL anywhere.
- *   4. Listener accepts the POST, validates state, writes AUTH_AI_KEY
+ *   4. Listener accepts the POST, validates state, writes AUTH_AI_SECRET
  *      to .env, prints SDK install instructions.
  *
  * Mismatching `state` values are ignored without closing the listener:
@@ -49,12 +49,12 @@ export async function runInit(opts: InitOptions): Promise<void> {
   console.log(`Relay:   ${relayUrl}`);
   console.log(`Env:     ${envFile}\n`);
 
-  // Pre-flight: refuse to overwrite an existing AUTH_AI_KEY (unless --force).
+  // Pre-flight: refuse to overwrite an existing AUTH_AI_SECRET (unless --force).
   if (await fileExists(envFile)) {
     const current = await fs.readFile(envFile, "utf8");
-    if (/^AUTH_AI_KEY=/m.test(current) && !opts.force) {
+    if (/^AUTH_AI_SECRET=/m.test(current) && !opts.force) {
       throw new Error(
-        `${envFile} already has AUTH_AI_KEY — refusing to overwrite. Use --force to replace.`,
+        `${envFile} already has AUTH_AI_SECRET — refusing to overwrite. Use --force to replace.`,
       );
     }
   }
@@ -74,7 +74,7 @@ export async function runInit(opts: InitOptions): Promise<void> {
 
   console.log(`✓ Received API key from webapp\n`);
 
-  console.log(`2/2 Writing AUTH_AI_KEY to ${envFile}...`);
+  console.log(`2/2 Writing AUTH_AI_SECRET to ${envFile}...`);
   await writeEnvKey(envFile, result.key, opts.force ?? false);
   console.log(`✓ ${envFile} updated\n`);
 
@@ -283,14 +283,14 @@ async function writeEnvKey(path: string, key: string, force: boolean): Promise<v
   if (await fileExists(path)) {
     current = await fs.readFile(path, "utf8");
   }
-  const line = `AUTH_AI_KEY=${key}`;
-  if (/^AUTH_AI_KEY=/m.test(current)) {
+  const line = `AUTH_AI_SECRET=${key}`;
+  if (/^AUTH_AI_SECRET=/m.test(current)) {
     if (!force) {
       throw new Error(
-        `${path} already has AUTH_AI_KEY — refusing to overwrite. Use --force to replace.`,
+        `${path} already has AUTH_AI_SECRET — refusing to overwrite. Use --force to replace.`,
       );
     }
-    const replaced = current.replace(/^AUTH_AI_KEY=.*$/m, line);
+    const replaced = current.replace(/^AUTH_AI_SECRET=.*$/m, line);
     await fs.writeFile(path, replaced);
     return;
   }

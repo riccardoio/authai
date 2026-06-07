@@ -8,7 +8,7 @@ import type { Context } from "hono";
  *   AUTH_AI_ORIGINATOR + AUTH_AI_IDENTITY_SECRET env vars. `appId` is
  *   undefined; JWTs omit the `app_id` claim.
  * - Cloud edition: the tenant is resolved per-request from an `apps` table
- *   row keyed by the request's Origin header or x-authai-key header. `appId`
+ *   row keyed by the request's Origin header or x-authai-secret header. `appId`
  *   is always set; JWTs MUST carry a matching `app_id` claim or the relay
  *   returns uniform 401.
  *

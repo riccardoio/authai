@@ -31,7 +31,7 @@ export type CloudTenantConfig = {
 /**
  * Cloud-edition resolver. Looks up the app row by either:
  *
- *   1. `x-authai-key` header (used by builder backends calling /v1/*)
+ *   1. `x-authai-secret` header (used by builder backends calling /v1/*)
  *   2. `Origin` header (used by browser-originating /auth/* requests)
  *
  * Returns null if no match → uniform 401 at the tenant middleware.
@@ -48,12 +48,15 @@ export class CloudTenantResolver implements TenantResolver {
   constructor(private readonly config: CloudTenantConfig) {}
 
   async resolve(c: Context): Promise<Tenant | null> {
-    // Preference 1: explicit AuthAI Cloud key in header. The builder
-    // backend sends this on every /v1/* call (it's the AUTH_AI_KEY
-    // they wrote to .env from the npx CLI).
-    const apiKey = c.req.header("x-authai-key");
-    if (apiKey) {
-      const hash = hashApiKey(apiKey);
+    // Preference 1: explicit AuthAI Cloud secret in header. The builder
+    // backend sends this on every /v1/* call (it's the AUTH_AI_SECRET
+    // they wrote to .env from the npx CLI). The header name is
+    // deliberately `x-authai-secret` rather than `x-authai-key` so it's
+    // obvious to anyone debugging traffic that the value must not be
+    // shared or logged.
+    const apiSecret = c.req.header("x-authai-secret");
+    if (apiSecret) {
+      const hash = hashApiKey(apiSecret);
       const app = await this.config.appStore.getByApiKeyHash(hash);
       // appStore.getByApiKeyHash already excludes revoked apps via
       // `revoked_at IS NULL` in the SQL — a revoke from the dashboard
