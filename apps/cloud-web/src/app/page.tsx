@@ -60,7 +60,6 @@ export default function HomePage() {
           <main className="landing-hero">
             <div className="landing-hero-text">
               <span className="landing-eyebrow">
-                <span className="dot" />
                 Auth for AI builders
               </span>
 
@@ -71,7 +70,7 @@ export default function HomePage() {
               <p className="landing-sub">
                 Your users sign in once with their ChatGPT, Grok, or Copilot
                 subscription. Your backend keeps using the{" "}
-                <code className="landing-chip">openai</code> SDK — just point{" "}
+                <code className="landing-chip">openai</code> SDK. Just point{" "}
                 <code className="landing-chip">baseURL</code> at the relay.
                 Every model call lands on the user's plan, not yours.
               </p>
@@ -114,18 +113,21 @@ export default function HomePage() {
                 </span>
               </div>
 
-              <p className="landing-trust">
-                <LockIcon />
-                End-to-end encrypted — the relay holds ciphertext only, never
-                the keys to decrypt it.{" "}
-                <Link href="/docs/security" className="landing-trust-link">
-                  Read the security model →
-                </Link>
-              </p>
             </div>
 
             <CodePreview />
           </main>
+
+          <section className="landing-trust-band" aria-label="Security">
+            <p className="landing-trust">
+              <LockIcon />
+              End-to-end encrypted. The relay holds ciphertext only, never the
+              keys to decrypt it.{" "}
+              <Link href="/docs/security" className="landing-trust-link">
+                Read the security model →
+              </Link>
+            </p>
+          </section>
 
           <section className="landing-flow" aria-labelledby="how-it-works">
             <h2 id="how-it-works" className="landing-flow-heading">
@@ -145,7 +147,7 @@ export default function HomePage() {
                 <h3 className="landing-flow-step-title">Your backend gets a JWT</h3>
                 <p className="landing-flow-step-body">
                   Use it like an API key. The <code>openai</code> SDK keeps
-                  working — point <code>baseURL</code> at the relay and the
+                  working. Point <code>baseURL</code> at the relay and the
                   rest of your code is unchanged.
                 </p>
               </li>
@@ -162,7 +164,10 @@ export default function HomePage() {
           </section>
 
           <footer className="landing-footer">
-            Self-hostable · OSS · Built on the Geist of the web
+            Self-hostable · MIT licensed ·{" "}
+            <a href={GITHUB_URL} target="_blank" rel="noreferrer">
+              github.com/riccardoio/authai
+            </a>
           </footer>
         </div>
       )}
