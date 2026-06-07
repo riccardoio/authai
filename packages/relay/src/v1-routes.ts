@@ -23,17 +23,26 @@ export function createV1Routes(deps: {
   const app = new Hono<V1Variables>();
 
   // Uniform 401 for every authentication failure mode (missing header,
-  // malformed JWT, bad signature, expired, wrong version, wrong key length).
+  // malformed JWT, bad signature, expired, wrong version, wrong key length,
+  // and now also cross-tenant JWT replay in cloud edition).
   // Detail is kept in server-side logs only — we never let callers
   // distinguish failure modes against /v1/* either, matching the
   // /auth/whoami contract.
   app.use("*", async (c, next) => {
     if (c.req.method === "OPTIONS") return next();
+    const tenant = c.get("tenant");
     const auth = c.req.header("Authorization") || "";
     const match = auth.match(/^Bearer\s+(.+)$/i);
     if (!match) return unauthorized(c);
     try {
       const verified = await verifySessionJwt(match[1]!, deps.jwtSecret);
+      // Cross-tenant JWT replay guard. A JWT minted under App A must not
+      // be usable against App B's tenant context. Treat as unauthorized
+      // with no distinguishable response (preserves the no-oracle
+      // contract).
+      if ((verified.appId ?? undefined) !== tenant.appId) {
+        return unauthorized(c);
+      }
       c.set("recordId", verified.recordId);
       c.set("recordKey", verified.recordKey);
       c.set("provider", verified.provider);
@@ -175,10 +184,20 @@ async function resolveCredentials(
   const recordId = c.get("recordId");
   const recordKey = c.get("recordKey");
   const provider = c.get("provider");
+  const tenant = c.get("tenant");
   const record = await store.get(recordId);
   if (!record) {
     // Revoked or never existed — surface as the same generic 401.
     console.warn("[v1] record missing for verified jwt:", recordId);
+    return { error: unauthorized(c) };
+  }
+  // Defense in depth: even if the JWT's app_id claim matched the tenant,
+  // the underlying record must also be bound to the same app. Catches the
+  // hypothetical case where a JWT secret leak lets an attacker forge a
+  // JWT with arbitrary app_id but the record they reference belongs to
+  // a different tenant.
+  if ((record.appId ?? undefined) !== tenant.appId) {
+    console.warn("[v1] record/tenant mismatch:", recordId, record.appId, tenant.appId);
     return { error: unauthorized(c) };
   }
   try {

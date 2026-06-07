@@ -3,6 +3,19 @@ export type AuthRecord = {
   iv: Uint8Array;
   blob: Uint8Array;
   accountIdHash: string;
+  /**
+   * Cloud-edition only. Identifies which app owns this record. The same
+   * upstream provider account signing into two different apps produces
+   * two distinct rows because (a) the accountIdHash differs per app
+   * (per-app identitySecret) and (b) the appId column differs.
+   *
+   * Community-edition (single-tenant) stores undefined.
+   *
+   * The store's `upsertByAccountHash` MUST treat appId as part of the
+   * dedup key — community edition uses NULL semantics so existing
+   * single-tenant data keeps working without migration.
+   */
+  appId?: string;
   createdAt: number;
   updatedAt: number;
   expiresAt: number;

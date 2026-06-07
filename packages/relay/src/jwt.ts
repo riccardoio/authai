@@ -10,6 +10,13 @@ export type SessionClaims = {
   rid: string;
   k: string;
   prov: ProviderId;
+  /**
+   * Cloud-edition app binding. Present when the JWT was minted in a
+   * multi-tenant relay. Cross-tenant JWT replay is blocked by checking
+   * this against the resolved tenant's appId at /v1/* and /auth/whoami.
+   * Absent in community-edition JWTs.
+   */
+  app?: string;
   iat: number;
   exp: number;
 };
@@ -18,15 +25,23 @@ export async function issueSessionJwt(params: {
   recordId: string;
   recordKey: Buffer;
   provider: ProviderId;
+  appId?: string;
   secret: Uint8Array;
 }): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
-  return await new SignJWT({
+  const payload: Record<string, unknown> = {
     v: JWT_VERSION,
     rid: params.recordId,
     k: params.recordKey.toString("base64url"),
     prov: params.provider,
-  })
+  };
+  // Only emit `app` when present so community-edition JWTs stay
+  // byte-identical to pre-multi-tenancy and existing integrations decode
+  // them unchanged.
+  if (params.appId !== undefined) {
+    payload.app = params.appId;
+  }
+  return await new SignJWT(payload)
     .setProtectedHeader({ alg: ALG })
     .setIssuedAt(now)
     .setExpirationTime(now + JWT_LIFETIME_SECONDS)
@@ -36,7 +51,7 @@ export async function issueSessionJwt(params: {
 export async function verifySessionJwt(
   token: string,
   secret: Uint8Array,
-): Promise<{ recordId: string; recordKey: Buffer; provider: ProviderId }> {
+): Promise<{ recordId: string; recordKey: Buffer; provider: ProviderId; appId?: string }> {
   const { payload } = await jwtVerify(token, secret, { algorithms: [ALG] });
   const claims = payload as Partial<SessionClaims>;
   if (claims.v !== 1 && claims.v !== JWT_VERSION) {
@@ -50,5 +65,6 @@ export async function verifySessionJwt(
   if (provider !== "openai" && provider !== "xai" && provider !== "github") {
     throw new Error(`jwt has unknown provider: ${provider}`);
   }
-  return { recordId: claims.rid, recordKey, provider };
+  const appId = typeof claims.app === "string" && claims.app.length > 0 ? claims.app : undefined;
+  return { recordId: claims.rid, recordKey, provider, appId };
 }

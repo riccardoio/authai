@@ -1,17 +1,74 @@
-import { Hono } from "hono";
+import { Hono, type MiddlewareHandler } from "hono";
 import { timingSafeEqual } from "node:crypto";
 import { createAuthRoutes } from "./auth-routes.js";
 import { createV1Routes } from "./v1-routes.js";
 import type { AuthRecordStore } from "./store.js";
+import {
+  StaticTenantResolver,
+  tenantMiddleware,
+  type TenantResolver,
+} from "./tenant.js";
 
-export type RelayConfig = {
+/**
+ * Two shapes are accepted for backward compatibility.
+ *
+ * Community (legacy, single-tenant):
+ *   { store, jwtSecret, identitySecret, originator }
+ *
+ * Cloud or any caller that wants per-request tenant resolution:
+ *   { store, jwtSecret, tenantResolver }
+ *
+ * The community shape is internally wrapped in a StaticTenantResolver so
+ * the route layer doesn't have to branch on edition. Existing self-hosted
+ * deployments keep working with zero config changes.
+ */
+export type RelayConfig =
+  | RelayConfigStatic
+  | RelayConfigDynamic;
+
+export type RelayConfigStatic = {
   store: AuthRecordStore;
   jwtSecret: Uint8Array;
   identitySecret: Buffer;
   originator: string;
+  /**
+   * Optional Hono middleware to install BEFORE any AuthAI route. Each entry
+   * gets the standard `(c, next)` signature. Use this hook for operator
+   * concerns the relay deliberately doesn't ship with defaults:
+   *
+   *   - rate limiting (per-IP or per-JWT)
+   *   - request body size caps
+   *   - structured / redacted logging (NEVER log Authorization headers)
+   *   - request IDs, tracing headers
+   *
+   * Middleware runs in the order it's listed. Errors thrown from middleware
+   * short-circuit the request and surface as 500s unless the middleware
+   * sets a status itself.
+   */
+  middleware?: MiddlewareHandler[];
 };
 
-function validateConfig(config: RelayConfig): void {
+export type RelayConfigDynamic = {
+  store: AuthRecordStore;
+  jwtSecret: Uint8Array;
+  /**
+   * Cloud editions or any caller that wants per-request tenant resolution
+   * (e.g., for multi-tenant SaaS) supplies a resolver here. The resolver
+   * is consulted on every non-OPTIONS request before any route handler
+   * executes; returning null surfaces as a uniform 401.
+   *
+   * Single-tenant deploys can ignore this and use the legacy shape with
+   * `originator` + `identitySecret` instead.
+   */
+  tenantResolver: TenantResolver;
+  middleware?: MiddlewareHandler[];
+};
+
+function isStaticConfig(config: RelayConfig): config is RelayConfigStatic {
+  return (config as RelayConfigStatic).originator !== undefined;
+}
+
+function validateStaticConfig(config: RelayConfigStatic): void {
   if (!config.originator || config.originator.length === 0) {
     throw new Error("createRelayApp: `originator` is required");
   }
@@ -35,9 +92,48 @@ function validateConfig(config: RelayConfig): void {
   }
 }
 
+function validateDynamicConfig(config: RelayConfigDynamic): void {
+  if (config.jwtSecret.length < 32) {
+    throw new Error("createRelayApp: jwtSecret must be at least 32 bytes");
+  }
+  if (!config.tenantResolver) {
+    throw new Error("createRelayApp: tenantResolver is required for dynamic config");
+  }
+}
+
 export function createRelayApp(config: RelayConfig): Hono {
-  validateConfig(config);
+  let resolver: TenantResolver;
+  let middleware: MiddlewareHandler[] | undefined;
+  let store: AuthRecordStore;
+  let jwtSecret: Uint8Array;
+
+  if (isStaticConfig(config)) {
+    validateStaticConfig(config);
+    resolver = new StaticTenantResolver({
+      originator: config.originator,
+      identitySecret: config.identitySecret,
+    });
+    middleware = config.middleware;
+    store = config.store;
+    jwtSecret = config.jwtSecret;
+  } else {
+    validateDynamicConfig(config);
+    resolver = config.tenantResolver;
+    middleware = config.middleware;
+    store = config.store;
+    jwtSecret = config.jwtSecret;
+  }
+
   const app = new Hono();
+
+  // Operator-supplied middleware runs first so things like rate limits +
+  // body size caps + request-id logging see every relay request, including
+  // the auth routes where the JWT itself isn't yet known.
+  if (middleware) {
+    for (const mw of middleware) {
+      app.use("*", mw);
+    }
+  }
 
   app.use("*", async (c, next) => {
     c.header("Access-Control-Allow-Origin", "*");
@@ -52,17 +148,15 @@ export function createRelayApp(config: RelayConfig): Hono {
 
   app.get("/", (c) => c.json({ ok: true, service: "authai-relay" }));
 
-  app.route("/auth", createAuthRoutes({
-    store: config.store,
-    jwtSecret: config.jwtSecret,
-    identitySecret: config.identitySecret,
-    originator: config.originator,
-  }));
+  // Tenant middleware runs AFTER CORS and the operator middleware but
+  // BEFORE the route groups, so /auth/* and /v1/* all see a populated
+  // c.get('tenant'). The "/" health endpoint is registered above so it
+  // doesn't require a tenant — useful for load balancer probes.
+  app.use("*", tenantMiddleware(resolver));
 
-  app.route("/v1", createV1Routes({
-    store: config.store,
-    jwtSecret: config.jwtSecret,
-  }));
+  app.route("/auth", createAuthRoutes({ store, jwtSecret }));
+
+  app.route("/v1", createV1Routes({ store, jwtSecret }));
 
   return app;
 }

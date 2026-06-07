@@ -11,6 +11,13 @@ export type Session = {
   status: "pending" | "complete" | "expired" | "error";
   jwt?: string;
   error?: string;
+  /**
+   * Cloud-edition only. The appId of the tenant that created this session.
+   * Pinned at creation so a subsequent poll under a different tenant
+   * (e.g., guessed sessionId from another app) cannot reuse it.
+   * Undefined in community edition where there is no tenant scoping.
+   */
+  appId?: string;
 };
 
 const TTL_MS = 15 * 60 * 1000;
@@ -22,6 +29,7 @@ export function createSession(params: {
   userCode: string;
   pollIntervalMs: number;
   expiresInMs: number;
+  appId?: string;
 }): Session {
   const id = randomUUID();
   const session: Session = {
@@ -32,6 +40,7 @@ export function createSession(params: {
     pollIntervalMs: params.pollIntervalMs,
     expiresAt: Date.now() + Math.min(TTL_MS, params.expiresInMs),
     status: "pending",
+    appId: params.appId,
   };
   sessions.set(id, session);
   return session;
