@@ -29,3 +29,6 @@ openclaw/
 
 # Local design references (image-gen prompts, mood notes, etc.)
 prompts.md
+
+# Git worktrees (isolated branches created via the worktree workflow)
+.worktrees/
