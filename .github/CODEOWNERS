@@ -1,0 +1,10 @@
+# Security-sensitive files — require explicit owner review on every change.
+
+apps/cloud-web/public/llms.txt          @riccardoio
+apps/cloud-web/src/lib/edge-templates/  @riccardoio
+packages/cloud/src/preview-allowlist.ts @riccardoio
+packages/relay/src/jwt.ts                @riccardoio
+packages/cloud/src/identity.ts           @riccardoio
+packages/cloud/src/tenant.ts             @riccardoio
+apps/cloud-web/src/lib/csrf.ts           @riccardoio
+apps/cloud-web/src/lib/session.ts        @riccardoio

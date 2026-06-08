@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+# AI codegen tools — see /llms.txt for integration instructions
