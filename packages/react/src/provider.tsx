@@ -1,11 +1,23 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import {
+  createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
+  useSyncExternalStore,
+} from "react";
+import { createRoot, type Root } from "react-dom/client";
 import { decodeJwtProvider, revokeSession, signInWithProvider, type ProviderId } from "./auth.js";
 import { resolveStorage, type TokenStorage } from "./storage.js";
 import { AuthAIDialog, type DialogStep } from "./dialog/Dialog.js";
 import type { AuthAITheme } from "./dialog/theme.js";
+import {
+  getSingletonSnapshot,
+  subscribeSingleton,
+  signInSingleton,
+  signOutSingleton,
+  cancelSingletonFlow,
+} from "./singleton.js";
+import { SingletonDialogHost } from "./singleton-dialog-host.js";
 
 export type AuthAIContextValue = {
-  relayUrl: string;
+  relayUrl: string | null;
   jwt: string | null;
   provider: ProviderId | null;
   isSignedIn: boolean;
@@ -21,16 +33,22 @@ type Phase = "idle" | "explain" | "picker" | "fetching" | "code" | "success" | "
 export type AuthAIProviderProps = {
   relayUrl: string;
   appName: string;
+  /**
+   * SSR hand-off. When set, the provider initializes isSignedIn from this
+   * jwt synchronously (no flash of unauth). On the client, storage takes
+   * over after first render.
+   */
+  initialJwt?: string | null;
   theme?: AuthAITheme;
-  storage?: "localStorage" | "memory" | TokenStorage;
+  storage?: "localStorage" | "memory" | "cookie" | TokenStorage;
   children: React.ReactNode;
 };
 
 export function AuthAIProvider({
-  relayUrl, appName, theme, storage, children,
+  relayUrl, appName, initialJwt, theme, storage, children,
 }: AuthAIProviderProps) {
   const adapter = useMemo(() => resolveStorage(storage), [storage]);
-  const [jwt, setJwt] = useState<string | null>(() => adapter.get());
+  const [jwt, setJwt] = useState<string | null>(() => initialJwt ?? adapter.get());
   const [phase, setPhase] = useState<Phase>("idle");
   const [originStep, setOriginStep] = useState<DialogStep>("explain");
   const [presetProvider, setPresetProvider] = useState<ProviderId | null>(null);
@@ -218,8 +236,54 @@ export function AuthAIProvider({
   );
 }
 
+// Module-level guard so we only mount the singleton's dialog host once,
+// even if useAuthAI() is called from many components.
+let singletonDialogMounted = false;
+
+function ensureSingletonDialogMounted(): void {
+  if (singletonDialogMounted) return;
+  if (typeof document === "undefined") return;
+  singletonDialogMounted = true;
+  const host = document.createElement("div");
+  host.setAttribute("data-authai-singleton-dialog", "");
+  document.body.appendChild(host);
+  const root: Root = createRoot(host);
+  root.render(<SingletonDialogHost />);
+}
+
+function useSingletonContextValue(): AuthAIContextValue {
+  useEffect(() => { ensureSingletonDialogMounted(); }, []);
+  const snap = useSyncExternalStore(
+    subscribeSingleton,
+    getSingletonSnapshot,
+    getSingletonSnapshot, // server snapshot — same SSR-safe initial value
+  );
+  return useMemo<AuthAIContextValue>(() => ({
+    relayUrl: snap.relayUrl,
+    jwt: snap.jwt,
+    provider: snap.provider,
+    isSignedIn: snap.isSignedIn,
+    error: snap.error,
+    signIn: (p) => { void signInSingleton(p); },
+    signOut: () => signOutSingleton(),
+  }), [snap]);
+}
+
+/**
+ * Read the current AuthAI session.
+ *
+ * Resolution order:
+ *   1. Nearest <AuthAIProvider> context — used if present.
+ *   2. Module-level singleton — populated by configureAuthAI().
+ *
+ * Always returns a value; never throws. `relayUrl` is null when no provider
+ * is mounted AND configureAuthAI() has not been called.
+ */
 export function useAuthAI(): AuthAIContextValue {
   const ctx = useContext(Ctx);
-  if (!ctx) throw new Error("useAuthAI must be used inside <AuthAIProvider>");
-  return ctx;
+  const singleton = useSingletonContextValue();
+  return ctx ?? singleton;
 }
+
+export { SingletonDialogHost } from "./singleton-dialog-host.js";
+export { cancelSingletonFlow };
