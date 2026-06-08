@@ -109,6 +109,8 @@ export function configureSingleton(opts: {
   store.config.relayUrl = opts.relayUrl;
   store.config.appName = opts.appName;
   if (opts.theme !== undefined) store.config.theme = opts.theme;
+  // Hydrate FIRST so we know whether storage has a JWT before deciding to swap.
+  hydrateFromStorageIfNeeded(store);
   if (opts.storage !== undefined && store.state.jwt === null) {
     store.config.storageSpec = opts.storage;
     store.storage = null;
@@ -119,7 +121,6 @@ export function configureSingleton(opts: {
     appName: store.config.appName,
     theme: store.config.theme,
   };
-  hydrateFromStorageIfNeeded(store);
   emit(store);
 }
 

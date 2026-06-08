@@ -104,6 +104,21 @@ describe("singleton store", () => {
     expect(count).toBeGreaterThan(0);
     unsub();
   });
+
+  it("hydrates from existing storage BEFORE deciding to swap the storage spec", () => {
+    // Pre-load localStorage as if a previous session existed
+    window.localStorage.setItem("authai:jwt", "eyJ.previous.session");
+    try {
+      // Configure with a DIFFERENT storage. If hydration happens before
+      // the swap decision, we should still surface the prior JWT.
+      configureSingleton({ relayUrl: "https://r", appName: "T", storage: "memory" });
+      const snap = getSingletonSnapshot();
+      expect(snap.jwt).toBe("eyJ.previous.session");
+      expect(snap.isSignedIn).toBe(true);
+    } finally {
+      window.localStorage.removeItem("authai:jwt");
+    }
+  });
 });
 
 describe("singleton SSR safety", () => {

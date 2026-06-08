@@ -208,13 +208,15 @@ packages/
 ├── relay-store-postgres Postgres driver (cloud edition uses this)
 ├── cloud                cloud edition: tenant, admin API, kill switch, rate limits
 ├── cli                  npx authai-cloud — one-command app registration
-└── react                <AuthAIProvider>, <SignInWithChatGPT>, useAuthAI()
+├── react                configureAuthAI(), <AuthAIProvider>, <SignIn>, useAuthAI(), cookieAdapter
+└── server               authai.session(), decodeAuthAIToken() — backend helpers
 apps/
 ├── relay-server         executable that boots the community (self-hosted) relay
 ├── cloud-relay-server   executable that boots the cloud edition's relay (Hetzner+Dokku)
 ├── cloud-web            Next.js webapp for AuthAI Cloud (Hetzner+Dokku) — landing, sign-in, dashboard, docs viewer, CLI bridge
 ├── example-backend      tiny Node demo using the openai SDK against the relay
-└── example-react        Vite + React frontend demo
+├── example-react        Vite + React SPA demo (singleton path)
+└── example-nextjs       Next.js App Router demo (provider + SSR path)
 ```
 
 ## Run the demo end-to-end

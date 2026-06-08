@@ -508,7 +508,7 @@ Model call errors come from the provider directly through the `openai` SDK (e.g.
 ## End-to-end checklist
 
 1. Relay is up at `https://your-relay.example/` and returns `{"ok": true, "service": "authai-relay"}`.
-2. Frontend wraps `<App>` in `<AuthAIProvider>` with that `relayUrl`.
+2. Frontend either calls `configureAuthAI({ relayUrl, appName })` at module scope (singleton — recommended) OR wraps `<App>` in `<AuthAIProvider relayUrl={...} appName="...">` (provider — SSR / advanced).
 3. `<SignIn>` renders the dialog and reaches the provider's device-code page.
 4. After authorizing, `useAuthAI().jwt` is a non-null string.
 5. Frontend sends `jwt` to your backend on every AI request via `Authorization: Bearer …`.
