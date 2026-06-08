@@ -27,8 +27,11 @@ export {
   hashApiKey,
   generateApiKey,
   generateVerifyToken,
+  generatePublishableKey,
   normalizeOrigin,
+  classifyOriginTier,
 } from "./identity.js";
+export type { OriginTier } from "./identity.js";
 
 // DNS TXT origin verification (packages/cloud/src/origin-verify.ts) is NOT
 // exported in v1. The v1 cloud edition treats every registered origin as

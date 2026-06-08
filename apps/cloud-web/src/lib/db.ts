@@ -4,7 +4,12 @@
  * after a deploy + first request) reconstruct cheaply.
  */
 
-import { createPostgresStore, type PostgresStore } from "@authai/relay-store-postgres";
+import {
+  createPostgresStore,
+  createStore,
+  type PostgresStore,
+  type AppStore,
+} from "@authai/relay-store-postgres";
 import { requiredFromAny } from "./env";
 
 let cached: PostgresStore | null = null;
@@ -18,4 +23,17 @@ export async function getStore(): Promise<PostgresStore> {
   const url = requiredFromAny(["AUTH_AI_DATABASE_URL", "DATABASE_URL"]);
   cached = await createPostgresStore({ connectionString: url });
   return cached;
+}
+
+// Namespaced store (apps + origins + publishableKeys). Used by flows
+// that need the full AppStore interface — primarily publishable-key
+// provisioning. Separate from the legacy PostgresStore above; they share
+// the same Postgres cluster but use independent connection pools.
+let cachedFull: AppStore | null = null;
+
+export async function getFullStore(): Promise<AppStore> {
+  if (cachedFull) return cachedFull;
+  const url = requiredFromAny(["AUTH_AI_DATABASE_URL", "DATABASE_URL"]);
+  cachedFull = await createStore({ url });
+  return cachedFull;
 }

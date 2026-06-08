@@ -3,21 +3,59 @@ import { redirect } from "next/navigation";
 import { ulid } from "ulid";
 import { getSession } from "@/lib/session";
 import { getStore } from "@/lib/db";
-import { generateApiKey, hashApiKey, normalizeOrigin } from "@authai/cloud";
+import { generateApiKey, hashApiKey, normalizeOrigin, classifyOriginTier } from "@authai/cloud";
 import { CLI_BRIDGE_COOKIE, verifyBridge } from "@/lib/cli-bridge";
 import { setOneTimeKey } from "@/lib/one-time-key";
 import { cookies } from "next/headers";
 import { AuthedShell } from "../../authed-shell";
+import { PublishableConfirmForm } from "./publishable-form";
 
 export default async function NewAppPage({
   searchParams,
 }: {
-  searchParams: Promise<{ cli?: string }>;
+  searchParams: Promise<{ cli?: string; type?: string; origin?: string; name?: string }>;
 }) {
   const session = await getSession();
   if (!session) redirect("/sign-in?return=/apps/new");
 
   const params = await searchParams;
+
+  // Publishable-app branch — wired by the AI codegen CLI via
+  //   /apps/new?type=publishable&origin=https://my-app.com&name=My+App
+  if (params.type === "publishable") {
+    if (!params.origin) {
+      return (
+        <AuthedShell githubLogin={session.githubLogin} breadcrumb="New publishable app">
+          <h1>Can't create app</h1>
+          <p>Missing <code>origin</code> query parameter.</p>
+          <p><Link href="/apps/new" className="au-btn au-btn-secondary">Create an app manually instead</Link></p>
+        </AuthedShell>
+      );
+    }
+    const presetOrigin = normalizeOrigin(params.origin);
+    if (!presetOrigin) {
+      return (
+        <AuthedShell githubLogin={session.githubLogin} breadcrumb="New publishable app">
+          <h1>Can't create app</h1>
+          <p>The <code>origin</code> query parameter is not a valid URL.</p>
+          <p><Link href="/apps/new" className="au-btn au-btn-secondary">Create an app manually instead</Link></p>
+        </AuthedShell>
+      );
+    }
+    const presetName = params.name?.trim() || new URL(presetOrigin).hostname;
+    const tier = classifyOriginTier(presetOrigin);
+    return (
+      <AuthedShell githubLogin={session.githubLogin} breadcrumb="New publishable app">
+        <PublishableConfirmForm
+          sessionEmail={session.githubEmail ?? session.githubLogin}
+          origin={presetOrigin}
+          name={presetName}
+          tier={tier}
+        />
+      </AuthedShell>
+    );
+  }
+
   const isCliFlow = params.cli === "1";
 
   async function createApp(formData: FormData) {
