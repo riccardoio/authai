@@ -61,25 +61,51 @@ pnpm dev:relay
 
 ### Frontend (React)
 
+Two integration paths. The singleton path is the recommended default for client SPAs; the provider path is for SSR (Next.js, Remix) and multi-tenant.
+
+#### Singleton (client SPAs) — recommended
+
 ```tsx
-import { AuthAIProvider, SignInWithChatGPT, useAuthAI } from "@authai/react";
+import { configureAuthAI, SignIn, useAuthAI } from "@authai/react";
+
+// Call once, at module scope. No provider tree.
+configureAuthAI({
+  relayUrl: "https://your-relay.com",
+  appName: "My App",
+});
 
 function App() {
+  const { jwt, isSignedIn, signOut } = useAuthAI();
+  if (!isSignedIn) return <SignIn>Sign in with AI</SignIn>;
+  // send `jwt` to your backend however you normally send auth
+}
+```
+
+`useAuthAI()` and `<SignIn>` work anywhere in the tree — no wrapper required. The sign-in dialog auto-mounts via portal on first use.
+
+#### Provider (SSR + advanced)
+
+```tsx
+// app/layout.tsx — Next.js App Router
+import { cookies } from "next/headers";
+import { AuthAIProvider } from "@authai/react";
+
+export default async function Layout({ children }) {
+  const jwt = (await cookies()).get("authai-jwt")?.value ?? null;
   return (
-    <AuthAIProvider relayUrl="https://your-relay.com" storage="localStorage">
-      <YourApp />
+    <AuthAIProvider
+      relayUrl={process.env.NEXT_PUBLIC_AUTHAI_RELAY!}
+      appName="My App"
+      initialJwt={jwt}
+      storage="cookie"
+    >
+      {children}
     </AuthAIProvider>
   );
 }
-
-function YourApp() {
-  const { jwt, isSignedIn, signOut } = useAuthAI();
-  if (!isSignedIn) return <SignInWithChatGPT />;
-
-  // send `jwt` to your backend however you normally send auth
-  // (Bearer header, cookie, request body, etc.)
-}
 ```
+
+`initialJwt` is the SSR hand-off: pass a JWT from anywhere (cookie, NextAuth session, custom header) and the first render is correctly signed-in. `storage="cookie"` mirrors the JWT to a cookie so server components can read it. Full demo in `apps/example-nextjs`.
 
 The SDK only exposes the JWT. There's no `client.chat()` method, no wrapper around `openai` — model calls happen in your backend, using the package you already use.
 
@@ -213,5 +239,5 @@ pnpm test
 
 - Postgres storage driver
 - Framework-agnostic `@authai/web` SDK (vanilla / web component)
-- Express / Next.js middleware helpers
+- HttpOnly cookie mode (relay-side session endpoint)
 - Cloud edition (multi-tenant, dashboard, branded consent originators)
