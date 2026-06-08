@@ -1,3 +1,5 @@
+"use client";
+
 import type { ProviderId } from "./auth.js";
 import { useAuthAI } from "./provider.js";
 

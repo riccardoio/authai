@@ -1,3 +1,5 @@
+"use client";
+
 import { useSyncExternalStore, useMemo, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { AuthAIDialog, type DialogStep } from "./dialog/Dialog.js";

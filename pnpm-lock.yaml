@@ -114,6 +114,40 @@ importers:
         specifier: ^5.6.3
         version: 5.9.3
 
+  apps/example-nextjs:
+    dependencies:
+      '@authai/react':
+        specifier: workspace:*
+        version: link:../../packages/react
+      '@authai/server':
+        specifier: workspace:*
+        version: link:../../packages/server
+      next:
+        specifier: ^15.0.3
+        version: 15.5.19(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      openai:
+        specifier: ^4.77.0
+        version: 4.104.0(ws@8.21.0)
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.1
+        version: 22.19.20
+      '@types/react':
+        specifier: ^18.3.12
+        version: 18.3.31
+      '@types/react-dom':
+        specifier: ^18.3.1
+        version: 18.3.7(@types/react@18.3.31)
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+
   apps/example-react:
     dependencies:
       '@authai/react':
