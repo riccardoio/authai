@@ -65,19 +65,24 @@ function SignInScreen({
   return (
     <div className="signin-screen" data-theme={mode}>
       <header className="signin-topbar">
-        <a
-          href="https://authai.io"
-          className="signin-brand"
-          target="_blank"
-          rel="noreferrer"
-        >
+        <div className="signin-brand">
           <span className="signin-brand-mark">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
               <path d="M12 2 L22 20 L2 20 Z" />
             </svg>
           </span>
-          AuthAI <span className="signin-brand-tag">demo</span>
-        </a>
+          <span className="signin-brand-text">
+            Demo App by{" "}
+            <a
+              href="https://authai.io"
+              className="signin-brand-link"
+              target="_blank"
+              rel="noreferrer"
+            >
+              authai.io
+            </a>
+          </span>
+        </div>
         <button
           type="button"
           className="signin-theme-toggle"
@@ -139,19 +144,24 @@ function ChatShell({
   return (
     <div className="chat-shell" data-theme={mode}>
       <header className="chat-topbar">
-        <a
-          href="https://authai.io"
-          className="chat-brand"
-          target="_blank"
-          rel="noreferrer"
-        >
+        <div className="chat-brand">
           <span className="chat-brand-mark">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
               <path d="M12 2 L22 20 L2 20 Z" />
             </svg>
           </span>
-          AuthAI <span className="chat-brand-tag">demo</span>
-        </a>
+          <span className="chat-brand-text">
+            Demo App by{" "}
+            <a
+              href="https://authai.io"
+              className="chat-brand-link"
+              target="_blank"
+              rel="noreferrer"
+            >
+              authai.io
+            </a>
+          </span>
+        </div>
         <button
           type="button"
           className="chat-theme-toggle"
