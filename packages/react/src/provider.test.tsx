@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { AuthAIProvider, useAuthAI } from "./provider.js";
 import { configureAuthAI } from "./configure.js";
 import { resetSingletonForTests } from "./singleton.js";
+import { SignIn } from "./button.js";
 
 function Probe() {
   const auth = useAuthAI();
@@ -127,5 +128,25 @@ describe("SingletonDialogHost SSR guard", () => {
   it("import does not throw", async () => {
     const mod = await import("./singleton-dialog-host.js");
     expect(typeof mod.SingletonDialogHost).toBe("function");
+  });
+});
+
+describe("<SignIn> with singleton", () => {
+  beforeEach(() => {
+    resetSingletonForTests();
+    document.querySelectorAll("[data-authai-singleton-dialog]").forEach(n => n.remove());
+  });
+
+  it("renders without a provider", () => {
+    configureAuthAI({ relayUrl: "https://r", appName: "P" });
+    render(<SignIn provider="openai">Sign in</SignIn>);
+    expect(screen.getByText("Sign in")).toBeInTheDocument();
+  });
+
+  it("renders without a provider AND without configureAuthAI being called", () => {
+    // Even with no config, the button must render — clicking it would
+    // surface an error state via the singleton, not throw at render time.
+    render(<SignIn>Sign in</SignIn>);
+    expect(screen.getByText("Sign in")).toBeInTheDocument();
   });
 });
