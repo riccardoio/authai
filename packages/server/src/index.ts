@@ -43,6 +43,15 @@ export type SessionOptions = {
   /** Relay base URL, e.g. https://relay.authai.io. No trailing slash needed. */
   relayUrl: string;
   /**
+   * Builder-app secret (`authai_v1_…`) identifying which tenant the call
+   * belongs to. Required when talking to a multi-tenant relay (AuthAI Cloud)
+   * — the relay's tenant middleware uses it to look up the app row before
+   * any token decryption happens. Self-hosted single-tenant relays can omit
+   * this. When set, it's sent as `x-authai-secret` on `/auth/whoami` AND
+   * pinned as a default header on the constructed `openai` client.
+   */
+  secret?: string;
+  /**
    * Cache identity responses for ~60s (default true). Identity caching is
    * non-authoritative — every model call still goes through the relay, where
    * revocation is enforced. Set to false to disable, or pass a custom adapter
@@ -86,6 +95,7 @@ function jwtCacheKey(jwt: string): string {
 
 async function tryAttachOpenAI(
   result: AuthAISession,
+  secret: string | undefined,
 ): Promise<void> {
   try {
     const mod = await import("openai").catch(() => null);
@@ -99,7 +109,12 @@ async function tryAttachOpenAI(
       (mod as { OpenAI?: typeof OpenAI }).OpenAI ??
       (mod as unknown as typeof OpenAI);
     if (typeof ctor !== "function") return;
-    result.openai = new ctor({ apiKey: result.apiKey, baseURL: result.baseURL });
+    const defaultHeaders = secret ? { "x-authai-secret": secret } : undefined;
+    result.openai = new ctor({
+      apiKey: result.apiKey,
+      baseURL: result.baseURL,
+      defaultHeaders,
+    });
   } catch {
     /* openai not installed; that's fine */
   }
@@ -108,11 +123,16 @@ async function tryAttachOpenAI(
 async function fetchWhoami(opts: {
   jwt: string;
   relayUrl: string;
+  secret: string | undefined;
   fetchImpl: typeof fetch;
 }): Promise<{ user: AuthAIUser; session: { expires: number | null } }> {
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${opts.jwt}`,
+  };
+  if (opts.secret) headers["x-authai-secret"] = opts.secret;
   const res = await opts.fetchImpl(`${trimRelay(opts.relayUrl)}/auth/whoami`, {
     method: "GET",
-    headers: { Authorization: `Bearer ${opts.jwt}` },
+    headers,
   });
   if (!res.ok) throw new AuthAIUnauthorized();
   const json = (await res.json().catch(() => null)) as any;
@@ -156,6 +176,7 @@ async function resolveSession(opts: SessionOptions): Promise<AuthAISession> {
     identity = await fetchWhoami({
       jwt: opts.jwt,
       relayUrl: opts.relayUrl,
+      secret: opts.secret,
       fetchImpl,
     });
     if (cache && ttlMs > 0) {
@@ -175,7 +196,7 @@ async function resolveSession(opts: SessionOptions): Promise<AuthAISession> {
     apiKey: opts.jwt,
     baseURL,
   };
-  await tryAttachOpenAI(result);
+  await tryAttachOpenAI(result, opts.secret);
   return result;
 }
 
