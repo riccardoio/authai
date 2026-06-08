@@ -29,25 +29,30 @@ Without it, you still get `{ user, apiKey, baseURL }` and can construct any Open
 
 ## Frontend
 
-Wrap your app with `<AuthAIProvider>` once and drop in a `<SignIn>` button anywhere.
+Two integration paths share the same SDK:
+
+| Path | When to use | What you write |
+| --- | --- | --- |
+| **Singleton** (default) | Client SPAs, Electron, mobile webviews, anything single-process | `configureAuthAI()` once + bare `useAuthAI()` anywhere |
+| **Provider** (advanced) | Next.js, Remix, multi-tenant, test isolation, SSR | `<AuthAIProvider initialJwt={...}>` |
+
+`useAuthAI()` reads the provider's context if one is mounted, otherwise falls back to the singleton. Both paths use the same hook and the same `<SignIn>` button.
+
+### Singleton
+
+Call `configureAuthAI()` once at module scope. The sign-in dialog auto-mounts via a body portal on first use.
 
 ```tsx
-import { AuthAIProvider, SignIn, useAuthAI } from "@authai/react";
+import { configureAuthAI, SignIn, useAuthAI } from "@authai/react";
+
+configureAuthAI({
+  relayUrl: "https://your-relay.example",
+  appName: "My App",
+});
 
 function App() {
-  return (
-    <AuthAIProvider
-      relayUrl="https://your-relay.example"
-      appName="My App"
-    >
-      <Chat />
-    </AuthAIProvider>
-  );
-}
-
-function Chat() {
-  const { jwt, isSignedIn } = useAuthAI();
-  if (!isSignedIn) return <SignIn />;
+  const { jwt, isSignedIn, signOut } = useAuthAI();
+  if (!isSignedIn) return <SignIn>Sign in</SignIn>;
 
   async function ask(messages) {
     const res = await fetch("/api/chat", {
@@ -63,7 +68,49 @@ function Chat() {
 }
 ```
 
-> **The JWT is a bearer credential carrying decryption material.** Anyone who reads it can drive the user's AuthAI session until it expires or is revoked. In the default `localStorage` configuration, an XSS on your page exposes the JWT. Treat the AuthAI JWT the same way you'd treat any session token: ship a strict CSP, sanitize all user-controlled HTML, and consider `storage="memory"` if you'd rather lose sessions on reload than keep one around for XSS to steal.
+> **The JWT is more than a session token.** It carries a 32-byte AES key (the user-side half of the relay's split-key model). Anyone who reads it can drive the user's AuthAI session — and decrypt the user's stored OAuth credentials at the relay — until it expires or is revoked. The default `localStorage` storage has the same XSS posture as any browser session token: ship a strict CSP and sanitize all user-controlled HTML. Treat `storage="cookie"` the same way (it is not HttpOnly in v1). For higher security, use `storage="memory"` and accept that sessions die on reload.
+
+### Provider (for SSR)
+
+When you need server-side rendering (Next.js, Remix), use `<AuthAIProvider>` so the first paint reflects the user's auth state. The JWT comes from wherever your session lives — cookie, NextAuth, Iron Session, custom header — and you pass it via `initialJwt`.
+
+```tsx
+// app/layout.tsx — Next.js App Router
+import { cookies } from "next/headers";
+import { AuthAIProvider } from "@authai/react";
+
+export default async function Layout({ children }) {
+  const jwt = (await cookies()).get("authai-jwt")?.value ?? null;
+  return (
+    <AuthAIProvider
+      relayUrl={process.env.NEXT_PUBLIC_AUTHAI_RELAY!}
+      appName="My App"
+      initialJwt={jwt}
+      storage="cookie"
+    >
+      {children}
+    </AuthAIProvider>
+  );
+}
+```
+
+`storage="cookie"` is one convenient way to get a JWT visible to your server code. You can use any other source (existing session middleware, request header forwarded from middleware, etc.) — just pass it to `initialJwt`. Passing `initialJwt={null}` explicitly suppresses the storage hydration and renders signed-out, which is what you want when the server has determined the user is not authenticated.
+
+For server components that need to know "is the user signed in" without a relay call, use `decodeAuthAIToken` from `@authai/server`:
+
+```tsx
+import { cookies } from "next/headers";
+import { decodeAuthAIToken } from "@authai/server";
+
+export default async function Page() {
+  const jwt = (await cookies()).get("authai-jwt")?.value;
+  const claims = decodeAuthAIToken(jwt); // { provider, expiresAt, appId } | null
+  if (!claims) redirect("/sign-in");
+  // ...
+}
+```
+
+Local decode never hits the relay. **Caveat:** revoked tokens still pass local decode until their JWT expiry. Every `/v1/*` call still enforces revocation server-side, so the worst case is a brief window where a revoked token can read static UI.
 
 ### Provider picker vs preset
 
@@ -81,6 +128,7 @@ function Chat() {
 
 ```ts
 {
+  relayUrl: string | null,      // null when neither configureAuthAI nor a provider has set it
   jwt: string | null,           // null until signed in
   provider: ProviderId | null,  // "openai" | "xai" | "github" | null
   isSignedIn: boolean,
@@ -94,11 +142,13 @@ function Chat() {
 
 ### Theming
 
+Pass `theme` to either `configureAuthAI()` or `<AuthAIProvider>`:
+
 ```tsx
-<AuthAIProvider
-  relayUrl="..."
-  appName="..."
-  theme={{
+configureAuthAI({
+  relayUrl: "...",
+  appName: "...",
+  theme: {
     mode: "system",      // "light" | "dark" | "system"
     radius: "12px",
     fontFamily: '"Inter", system-ui, sans-serif',
@@ -115,23 +165,24 @@ function Chat() {
       accent: "#1d4dff",
       danger: "#b91c1c",
     },
-  }}
->
+  },
+});
 ```
 
 All theme fields are optional. Omit to inherit defaults.
 
 ### Storage
 
-The JWT lives client-side. By default it's in `localStorage`; change with the `storage` prop.
+The JWT lives client-side. Pick the adapter that matches your environment:
 
 ```tsx
-<AuthAIProvider storage="localStorage">  // default
-<AuthAIProvider storage="memory">        // session-only, lost on reload
-<AuthAIProvider storage={myAdapter}>     // see TokenStorage interface
+configureAuthAI({ ..., storage: "localStorage" });  // default — client SPAs
+configureAuthAI({ ..., storage: "cookie" });        // SSR convenience — readable from server
+configureAuthAI({ ..., storage: "memory" });        // session-only, lost on reload
+configureAuthAI({ ..., storage: myAdapter });       // see TokenStorage interface
 ```
 
-The `TokenStorage` interface:
+The `TokenStorage` interface (for Electron secure storage, React Native AsyncStorage, Capacitor Preferences, etc.):
 
 ```ts
 type TokenStorage = {
@@ -140,6 +191,24 @@ type TokenStorage = {
   clear(): void;
 };
 ```
+
+Cookie storage options (override defaults if needed):
+
+```tsx
+import { cookieAdapter } from "@authai/react";
+
+configureAuthAI({
+  ...,
+  storage: cookieAdapter({
+    name: "my-app-jwt",        // default: "authai-jwt"
+    sameSite: "lax",           // default: "lax"
+    secure: true,              // default: auto-on for https
+    maxAge: 14 * 24 * 60 * 60, // default: 14d (matches JWT lifetime)
+  }),
+});
+```
+
+Defaults are tuned for production: `sameSite=lax` + `secure` auto-on for https + 14-day maxAge to match the relay's JWT exp. If you set `sameSite: "none"`, the Secure flag is enforced automatically (browsers silently drop SameSite=None cookies without Secure).
 
 ## Backend
 
@@ -237,6 +306,23 @@ authai.session({ jwt, relayUrl, cache: redisAdapter });
 
 > **Cache safety.** Cached identity is non-authoritative. Every `/v1/*` call still goes through the relay, so revocation is enforced even when whoami is cached.
 
+### Middleware / route guards (`decodeAuthAIToken`)
+
+For route guards where you only need to know "is the user signed in" and "which provider" — without contacting the relay — use the local decode helper:
+
+```ts
+import { decodeAuthAIToken } from "@authai/server";
+import { NextResponse } from "next/server";
+
+export function middleware(req) {
+  const jwt = req.cookies.get("authai-jwt")?.value;
+  const claims = decodeAuthAIToken(jwt);
+  if (!claims) return NextResponse.redirect(new URL("/sign-in", req.url));
+}
+```
+
+Returns `{ provider, expiresAt, appId } | null`. Never returns the encryption key. Skips the relay round-trip, so it scales linearly with traffic — but accepts the caveat that revoked tokens stay valid until their JWT exp. The relay still enforces revocation on every `/v1/*` call.
+
 ## End-to-end example (Next.js App Router)
 
 A minimal working integration in a Next.js 15 app.
@@ -244,15 +330,19 @@ A minimal working integration in a Next.js 15 app.
 **`app/layout.tsx`** — provider at the root:
 
 ```tsx
+import { cookies } from "next/headers";
 import { AuthAIProvider } from "@authai/react";
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  const jwt = (await cookies()).get("authai-jwt")?.value ?? null;
   return (
     <html>
       <body>
         <AuthAIProvider
           relayUrl={process.env.NEXT_PUBLIC_AUTHAI_RELAY_URL!}
           appName="My App"
+          initialJwt={jwt}
+          storage="cookie"
         >
           {children}
         </AuthAIProvider>
