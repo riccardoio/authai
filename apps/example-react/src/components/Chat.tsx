@@ -34,7 +34,7 @@ export function Chat({ jwt, provider, backendUrl, onSignOut }: Props) {
     setModelsErr(null);
     (async () => {
       try {
-        const res = await fetch(`${backendUrl}/models`, {
+        const res = await fetch(`${backendUrl}/api/models`, {
           headers: { Authorization: `Bearer ${jwt}` },
         });
         if (!res.ok) throw new Error(`${res.status} ${await res.text().catch(() => "")}`);
@@ -125,7 +125,7 @@ export function Chat({ jwt, provider, backendUrl, onSignOut }: Props) {
     setStreaming(true);
 
     try {
-      const res = await fetch(`${backendUrl}/chat`, {
+      const res = await fetch(`${backendUrl}/api/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

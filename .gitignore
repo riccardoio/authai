@@ -26,3 +26,6 @@ openclaw/
 
 # Tooling state (codex session ids, etc.)
 .context/
+
+# Local design references (image-gen prompts, mood notes, etc.)
+prompts.md

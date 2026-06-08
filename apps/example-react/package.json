@@ -10,9 +10,6 @@
   },
   "dependencies": {
     "@authai/react": "workspace:*",
-    "highlight.js": "^11.10.0",
-    "marked": "^14.1.3",
-    "marked-highlight": "^2.2.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
