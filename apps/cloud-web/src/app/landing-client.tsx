@@ -4,6 +4,7 @@ import Link from "next/link";
 import { CodePreview } from "./code-preview";
 import { ThemeRoot, SunIcon, MoonIcon } from "./theme-toggle";
 import { SiteFooter } from "./site-footer";
+import { TerminalSnippet } from "./terminal-snippet";
 
 const GITHUB_URL = "https://github.com/riccardoio/authai";
 
@@ -85,27 +86,8 @@ export function LandingClient({ session }: { session: SessionShape }) {
               </div>
 
               <div className="landing-preset">
-                <span>Or in your terminal</span>
-                <div className="landing-preset-row">
-                  <code style={{
-                    fontFamily: "var(--font-mono)",
-                    fontSize: 13,
-                    padding: "8px 14px",
-                    borderRadius: 999,
-                    border: "1px solid var(--border-strong)",
-                  }}>npx authai-cloud init</code>
-                </div>
-                <span
-                  style={{
-                    fontSize: 12,
-                    color: "var(--text-faint)",
-                    marginTop: 8,
-                  }}
-                >
-                  ~30 seconds. Writes{" "}
-                  <code style={{ fontFamily: "var(--font-mono)", fontSize: 11 }}>AUTH_AI_SECRET</code>{" "}
-                  to your <code style={{ fontFamily: "var(--font-mono)", fontSize: 11 }}>.env</code>.
-                </span>
+                <span className="landing-preset-label">Or in your terminal</span>
+                <TerminalSnippet command="npx authai-cloud init" />
               </div>
             </div>
 
