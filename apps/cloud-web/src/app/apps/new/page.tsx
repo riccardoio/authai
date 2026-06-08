@@ -66,6 +66,7 @@ export default async function NewAppPage({
     const name = String(formData.get("name") ?? "").trim();
     const rawOrigin = String(formData.get("origin") ?? "").trim();
     const cliMode = String(formData.get("cli") ?? "") === "1";
+    const includeTemplate = formData.get("includeTemplate") === "supabase";
 
     if (!name || name.length > 80) {
       throw new Error("name must be 1-80 chars");
@@ -146,7 +147,7 @@ export default async function NewAppPage({
       }
     }
 
-    redirect(`/apps/${id}/created`);
+    redirect(`/apps/${id}/created${includeTemplate ? "?template=supabase" : ""}`);
   }
 
   return (
@@ -195,6 +196,11 @@ export default async function NewAppPage({
           production, <code>http://localhost:3000</code> for local dev. No
           paths or query strings.
         </div>
+
+        <label style={{ display: "block", marginTop: "1rem" }}>
+          <input type="checkbox" name="includeTemplate" value="supabase" />
+          {" "}Generate a Supabase Edge Function template (proxies AuthAI from your Supabase project)
+        </label>
 
         <p style={{ marginTop: 32, display: "flex", gap: 12 }}>
           <button className="au-btn" type="submit">

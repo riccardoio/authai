@@ -7,6 +7,7 @@ import { AutoSubmit } from "./auto-submit";
 import { CopySnippetButton } from "./copy-snippet-button";
 import { AuthedShell } from "../../../authed-shell";
 import type { AppRow } from "@authai/relay-store-postgres";
+import { renderSupabaseEdgeTemplate } from "@/lib/edge-templates/supabase";
 
 /**
  * `/apps/[id]/created` — the one-time post-create page.
@@ -26,7 +27,7 @@ export default async function CreatedPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ type?: string; pk?: string; cli?: string; port?: string; state?: string }>;
+  searchParams: Promise<{ type?: string; pk?: string; cli?: string; port?: string; state?: string; template?: string }>;
 }) {
   const session = await getSession();
   if (!session) redirect("/sign-in");
@@ -102,6 +103,14 @@ export default async function CreatedPage({
     );
   }
 
+  const showTemplate = sp.template === "supabase";
+  const supabaseTemplate = showTemplate ? renderSupabaseEdgeTemplate({
+    appName: app.name,
+    secretEnvVar: "AUTH_AI_SECRET",
+    relayUrl: process.env.AUTHAI_RELAY_URL ?? "https://relay.authai.io",
+    allowedOrigin: app.origin,
+  }) : null;
+
   return (
     <AuthedShell githubLogin={session.githubLogin} breadcrumb={app.name}>
       <h1>App created</h1>
@@ -113,6 +122,19 @@ export default async function CreatedPage({
         it to git, never paste it in a chat.
       </p>
       <pre className="au-code">AUTH_AI_SECRET={key}</pre>
+
+      {supabaseTemplate && (
+        <section style={{ marginTop: "2rem" }}>
+          <h2>Supabase Edge Function template</h2>
+          <p>Save as <code>supabase/functions/chat/index.ts</code>:</p>
+          <pre style={{ background: "#f5f5f5", padding: "1rem", overflow: "auto", maxHeight: "20rem" }}>{supabaseTemplate}</pre>
+          <CopySnippetButton snippet={supabaseTemplate} />
+          <p style={{ color: "#666", marginTop: "0.5rem" }}>
+            Then: <code>supabase secrets set AUTH_AI_SECRET=&lt;the-key-above&gt;</code><br />
+            And: <code>supabase functions deploy chat --project-ref &lt;your-project&gt;</code>
+          </p>
+        </section>
+      )}
 
       <h2>Next steps</h2>
       <ol style={{ paddingLeft: 20, color: "var(--text-body)", fontSize: 14, lineHeight: 1.8 }}>
