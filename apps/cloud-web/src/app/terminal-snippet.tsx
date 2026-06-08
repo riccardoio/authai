@@ -35,6 +35,14 @@ export function TerminalSnippet({ command }: { command: string }) {
       >
         {copied ? <CheckIcon /> : <CopyIcon />}
       </button>
+      <span
+        className="landing-terminal-toast"
+        role="status"
+        aria-live="polite"
+        data-visible={copied || undefined}
+      >
+        Copied
+      </span>
     </div>
   );
 }
