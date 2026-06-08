@@ -26,6 +26,18 @@ function pruneOldNonces(): void {
 }
 
 function secretKey(): Uint8Array {
+  // Validate at first use rather than at module import — Next.js build's
+  // "Collecting page data" runs route modules without runtime env vars,
+  // so import-time validation would break Dockerfile builds.
+  if (CSRF_SECRET_HEX.length < 64) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(
+        "AUTH_AI_CLOUD_WEB_CSRF_SECRET must be at least 64 hex chars (32 bytes)",
+      );
+    }
+    // Dev/test fallback: deterministic non-secret value so tests work.
+    return new Uint8Array(Buffer.from("0".repeat(64), "hex"));
+  }
   return new Uint8Array(Buffer.from(CSRF_SECRET_HEX, "hex"));
 }
 

@@ -46,15 +46,7 @@ export const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET ?? "";
 export const SESSION_SECRET_HEX = process.env.AUTH_AI_CLOUD_WEB_SESSION_SECRET ?? "";
 
 // CSRF token signing secret. Must be at least 64 hex chars (32 bytes).
-export const CSRF_SECRET_HEX = (() => {
-  const v = process.env.AUTH_AI_CLOUD_WEB_CSRF_SECRET ?? "";
-  if (v.length < 64) {
-    // Don't throw in test/dev — issue a constant fallback so tests work.
-    // But warn in production.
-    if (process.env.NODE_ENV === "production") {
-      throw new Error("AUTH_AI_CLOUD_WEB_CSRF_SECRET must be at least 64 hex chars (32 bytes)");
-    }
-    return "0".repeat(64); // dev fallback
-  }
-  return v;
-})();
+// Validated at first use (not at import time) so the Dockerfile build step
+// — which runs with NODE_ENV=production but without runtime env vars —
+// doesn't throw during `next build`'s "Collecting page data" phase.
+export const CSRF_SECRET_HEX = process.env.AUTH_AI_CLOUD_WEB_CSRF_SECRET ?? "";
