@@ -200,6 +200,9 @@ async function resolveSession(opts: SessionOptions): Promise<AuthAISession> {
   return result;
 }
 
+export { decodeAuthAIToken } from "./decode.js";
+export type { DecodedAuthAIToken } from "./decode.js";
+
 export const authai = {
   /**
    * Verify a session JWT with the relay and resolve the calling user.

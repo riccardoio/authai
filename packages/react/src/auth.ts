@@ -95,6 +95,36 @@ export function decodeJwtProvider(jwt: string): ProviderId | null {
   }
 }
 
+/**
+ * Lightweight client-side check: does this JWT parse AND have an unexpired
+ * `exp` claim? Does NOT verify the signature — that's the relay's job. Use
+ * to validate `initialJwt` SSR hand-offs before trusting them.
+ *
+ * SSR note: when `atob` is unavailable (Node without polyfill), returns true
+ * to defer judgment to the client hydration pass. This is the right default
+ * for SSR initialJwt — the server has already decoded the cookie moments ago
+ * and any expired-token rejection should happen authoritatively at hydration.
+ * It is unreachable from singleton storage hydration because that path is
+ * gated behind isBrowser() before this function is called.
+ */
+export function isJwtCurrentlyValid(jwt: string): boolean {
+  try {
+    const payloadPart = jwt.split(".")[1];
+    if (!payloadPart) return false;
+    if (typeof atob !== "function") return true; // SSR — defer judgment to client hydration
+    const decoded = atob(
+      payloadPart.replace(/-/g, "+").replace(/_/g, "/") +
+        "=".repeat((4 - (payloadPart.length % 4)) % 4),
+    );
+    const json = JSON.parse(decoded);
+    const exp = json?.exp;
+    if (typeof exp !== "number") return false;
+    return exp > Math.floor(Date.now() / 1000);
+  } catch {
+    return false;
+  }
+}
+
 export async function revokeSession(relayUrl: string, jwt: string): Promise<void> {
   await fetch(joinUrl(relayUrl, "/auth/revoke"), {
     method: "POST",

@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
-import { AuthAIProvider, SignIn, useAuthAI } from "@authai/react";
+import {
+  SignIn,
+  useAuthAI,
+  configureAuthAI,
+} from "@authai/react";
 import { Chat } from "./components/Chat.js";
 
 const RELAY_URL = import.meta.env.VITE_RELAY_URL ?? "https://relay.authai.io";
@@ -21,29 +25,34 @@ function readInitialMode(): Mode {
     : "light";
 }
 
+// Singleton config — module-scope, runs once before any component renders.
+// No <AuthAIProvider> wrapping needed; useAuthAI() reads from this.
+configureAuthAI({
+  relayUrl: RELAY_URL,
+  appName: "AuthAI Demo",
+  storage: "localStorage",
+});
+
 export function App() {
   const [mode, setMode] = useState<Mode>(readInitialMode);
 
   useEffect(() => {
     try { window.localStorage.setItem(THEME_KEY, mode); } catch {}
     document.documentElement.dataset.theme = mode;
-  }, [mode]);
-
-  return (
-    <AuthAIProvider
-      relayUrl={RELAY_URL}
-      appName="AuthAI Demo"
-      storage="localStorage"
-      theme={{
+    // Re-apply theme when the user toggles dark/light. configureAuthAI
+    // is idempotent and last-write-wins for theme/appName/relayUrl.
+    configureAuthAI({
+      relayUrl: RELAY_URL,
+      appName: "AuthAI Demo",
+      theme: {
         mode,
         radius: "14px",
-        fontFamily:
-          '"Geist", ui-sans-serif, system-ui, -apple-system, sans-serif',
-      }}
-    >
-      <Shell mode={mode} setMode={setMode} />
-    </AuthAIProvider>
-  );
+        fontFamily: '"Geist", ui-sans-serif, system-ui, -apple-system, sans-serif',
+      },
+    });
+  }, [mode]);
+
+  return <Shell mode={mode} setMode={setMode} />;
 }
 
 function Shell({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void }) {
