@@ -301,6 +301,10 @@ importers:
         version: 5.9.3
 
   packages/server:
+    dependencies:
+      jose:
+        specifier: ^5.9.6
+        version: 5.10.0
     devDependencies:
       '@types/node':
         specifier: ^22.10.1

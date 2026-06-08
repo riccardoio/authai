@@ -15,6 +15,9 @@
     "build": "tsc -p tsconfig.json",
     "test": "vitest run --passWithNoTests"
   },
+  "dependencies": {
+    "jose": "^5.9.6"
+  },
   "peerDependencies": {
     "openai": ">=4"
   },
