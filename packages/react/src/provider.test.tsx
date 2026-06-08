@@ -66,6 +66,24 @@ describe("AuthAIProvider initialJwt", () => {
     expect(screen.getByTestId("signed").textContent).toBe("no");
   });
 
+  it("explicit initialJwt={null} suppresses the localStorage read (SSR hand-off)", () => {
+    // Pre-load localStorage as if a previous session existed.
+    // Use the same key the localStorageAdapter writes to.
+    window.localStorage.setItem("authai:jwt", "stale.jwt.from.previous.session");
+    try {
+      render(
+        <AuthAIProvider relayUrl="https://r" appName="P" initialJwt={null}>
+          <Probe />
+        </AuthAIProvider>
+      );
+      // Without the fix, isSignedIn would be "yes" because adapter.get() ran.
+      // With the fix, initialJwt={null} wins.
+      expect(screen.getByTestId("signed").textContent).toBe("no");
+    } finally {
+      window.localStorage.removeItem("authai:jwt");
+    }
+  });
+
   it("treats initialJwt omitted (undefined) as signed out unless storage has a jwt", () => {
     // Memory storage is empty by default — no jwt found.
     render(
@@ -74,6 +92,31 @@ describe("AuthAIProvider initialJwt", () => {
       </AuthAIProvider>
     );
     expect(screen.getByTestId("signed").textContent).toBe("no");
+  });
+});
+
+describe("SingletonDialogHost auto-mount", () => {
+  beforeEach(() => {
+    resetSingletonForTests();
+    // Remove any host divs left over from previous tests (the DOM-presence
+    // guard prevents re-mount across tests, so we explicitly clean up).
+    document.querySelectorAll("[data-authai-singleton-dialog]").forEach(n => n.remove());
+  });
+
+  it("attaches exactly one host div on first useAuthAI() mount", () => {
+    configureAuthAI({ relayUrl: "https://r", appName: "T" });
+    render(<Probe />);
+    const hosts = document.querySelectorAll("[data-authai-singleton-dialog]");
+    expect(hosts.length).toBe(1);
+  });
+
+  it("does not append a second host on subsequent renders", () => {
+    configureAuthAI({ relayUrl: "https://r", appName: "T" });
+    const { unmount } = render(<Probe />);
+    unmount();
+    render(<Probe />);
+    const hosts = document.querySelectorAll("[data-authai-singleton-dialog]");
+    expect(hosts.length).toBe(1);
   });
 });
 

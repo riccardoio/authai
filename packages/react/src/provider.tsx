@@ -2,7 +2,7 @@ import {
   createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
   useSyncExternalStore,
 } from "react";
-import { createRoot, type Root } from "react-dom/client";
+import { createRoot } from "react-dom/client";
 import { decodeJwtProvider, revokeSession, signInWithProvider, type ProviderId } from "./auth.js";
 import { resolveStorage, type TokenStorage } from "./storage.js";
 import { AuthAIDialog, type DialogStep } from "./dialog/Dialog.js";
@@ -48,7 +48,9 @@ export function AuthAIProvider({
   relayUrl, appName, initialJwt, theme, storage, children,
 }: AuthAIProviderProps) {
   const adapter = useMemo(() => resolveStorage(storage), [storage]);
-  const [jwt, setJwt] = useState<string | null>(() => initialJwt ?? adapter.get());
+  const [jwt, setJwt] = useState<string | null>(() =>
+    initialJwt !== undefined ? initialJwt : adapter.get()
+  );
   const [phase, setPhase] = useState<Phase>("idle");
   const [originStep, setOriginStep] = useState<DialogStep>("explain");
   const [presetProvider, setPresetProvider] = useState<ProviderId | null>(null);
@@ -236,19 +238,13 @@ export function AuthAIProvider({
   );
 }
 
-// Module-level guard so we only mount the singleton's dialog host once,
-// even if useAuthAI() is called from many components.
-let singletonDialogMounted = false;
-
 function ensureSingletonDialogMounted(): void {
-  if (singletonDialogMounted) return;
   if (typeof document === "undefined") return;
-  singletonDialogMounted = true;
+  if (document.querySelector("[data-authai-singleton-dialog]")) return;
   const host = document.createElement("div");
   host.setAttribute("data-authai-singleton-dialog", "");
   document.body.appendChild(host);
-  const root: Root = createRoot(host);
-  root.render(<SingletonDialogHost />);
+  createRoot(host).render(<SingletonDialogHost />);
 }
 
 function useSingletonContextValue(): AuthAIContextValue {
