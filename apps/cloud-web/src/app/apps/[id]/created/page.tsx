@@ -4,24 +4,30 @@ import { getSession } from "@/lib/session";
 import { getStore } from "@/lib/db";
 import { readOneTimeKey } from "@/lib/one-time-key";
 import { AutoSubmit } from "./auto-submit";
+import { CopySnippetButton } from "./copy-snippet-button";
 import { AuthedShell } from "../../../authed-shell";
+import type { AppRow } from "@authai/relay-store-postgres";
+import { renderSupabaseEdgeTemplate } from "@/lib/edge-templates/supabase";
 
 /**
  * `/apps/[id]/created` — the one-time post-create page.
  *
- * The API key is NEVER in the URL. It arrived via an HttpOnly cookie set
- * by the Create-App server action; this page reads it and either renders
- * the secret in a code block (web flow) or embeds it as a hidden field
- * in a POST form auto-submitted to the CLI's localhost listener (CLI
- * flow). The cookie auto-expires in 5 minutes — refresh within that
- * window shows the same secret again; after that it's gone.
+ * Secret apps: the API key arrives via an HttpOnly one-time cookie set by
+ * the Create-App server action; this page reads it and either renders the
+ * secret in a code block (web flow) or embeds it in a POST form
+ * auto-submitted to the CLI listener (CLI flow). Cookie auto-expires in 5
+ * minutes.
+ *
+ * Publishable apps: the publishable key is passed as `?pk=…` in the URL.
+ * It's browser-safe (origin-pinned, not a secret) so URL carriage is
+ * acceptable here. The key is still shown only once with copy affordance.
  */
 export default async function CreatedPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ cli?: string; port?: string; state?: string }>;
+  searchParams: Promise<{ type?: string; pk?: string; cli?: string; port?: string; state?: string; template?: string }>;
 }) {
   const session = await getSession();
   if (!session) redirect("/sign-in");
@@ -30,6 +36,15 @@ export default async function CreatedPage({
   const store = await getStore();
   const app = await store.apps.getById(id);
   if (!app || app.ownerGithubId !== session.githubUserId) redirect("/dashboard");
+
+  // Publishable-app result page.
+  if (sp.type === "publishable" && sp.pk) {
+    return (
+      <AuthedShell githubLogin={session.githubLogin} breadcrumb={app.name}>
+        <PublishableCreatedPage app={app} pkPlain={sp.pk} />
+      </AuthedShell>
+    );
+  }
 
   const key = await readOneTimeKey();
   const isCli = sp.cli === "1";
@@ -88,6 +103,14 @@ export default async function CreatedPage({
     );
   }
 
+  const showTemplate = sp.template === "supabase";
+  const supabaseTemplate = showTemplate ? renderSupabaseEdgeTemplate({
+    appName: app.name,
+    secretEnvVar: "AUTH_AI_SECRET",
+    relayUrl: process.env.AUTHAI_RELAY_URL ?? "https://relay.authai.io",
+    allowedOrigin: app.origin,
+  }) : null;
+
   return (
     <AuthedShell githubLogin={session.githubLogin} breadcrumb={app.name}>
       <h1>App created</h1>
@@ -99,6 +122,19 @@ export default async function CreatedPage({
         it to git, never paste it in a chat.
       </p>
       <pre className="au-code">AUTH_AI_SECRET={key}</pre>
+
+      {supabaseTemplate && (
+        <section style={{ marginTop: "2rem" }}>
+          <h2>Supabase Edge Function template</h2>
+          <p>Save as <code>supabase/functions/chat/index.ts</code>:</p>
+          <pre style={{ background: "#f5f5f5", padding: "1rem", overflow: "auto", maxHeight: "20rem" }}>{supabaseTemplate}</pre>
+          <CopySnippetButton snippet={supabaseTemplate} />
+          <p style={{ color: "#666", marginTop: "0.5rem" }}>
+            Then: <code>supabase secrets set AUTH_AI_SECRET=&lt;the-key-above&gt;</code><br />
+            And: <code>supabase functions deploy chat --project-ref &lt;your-project&gt;</code>
+          </p>
+        </section>
+      )}
 
       <h2>Next steps</h2>
       <ol style={{ paddingLeft: 20, color: "var(--text-body)", fontSize: 14, lineHeight: 1.8 }}>
@@ -123,5 +159,50 @@ export default async function CreatedPage({
         </Link>
       </p>
     </AuthedShell>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Publishable-app result
+// ---------------------------------------------------------------------------
+
+function PublishableCreatedPage({
+  app,
+  pkPlain,
+}: {
+  app: AppRow;
+  pkPlain: string;
+}) {
+  const snippet = `configureAuthAI({
+  relayUrl: "https://relay.authai.io",
+  appName: ${JSON.stringify(app.name)},
+  appId: ${JSON.stringify(pkPlain)},
+});`;
+
+  return (
+    <>
+      <h1>App created</h1>
+      <p>Add this to your project:</p>
+      <pre className="au-code">{snippet}</pre>
+      <CopySnippetButton snippet={snippet} />
+
+      <p style={{ marginTop: "1rem", fontSize: 14, color: "var(--text-body)" }}>
+        <strong>Origin:</strong> {app.origin}
+        <br />
+        This key only works from that origin. Save it now — once you close this
+        tab, the only way to get a new one is to rotate from your dashboard. You
+        can add more origins later from{" "}
+        <Link href={`/apps/${app.id}`}>your app settings</Link>.
+      </p>
+
+      <p style={{ marginTop: 32, display: "flex", gap: 12 }}>
+        <Link href="/dashboard" className="au-btn">
+          Back to dashboard
+        </Link>
+        <Link href={`/apps/${app.id}`} className="au-btn au-btn-secondary">
+          Manage app
+        </Link>
+      </p>
+    </>
   );
 }

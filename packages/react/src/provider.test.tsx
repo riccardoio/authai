@@ -153,6 +153,34 @@ describe("SingletonDialogHost SSR guard", () => {
   });
 });
 
+describe("<AuthAIProvider> appId (Task 3.2)", () => {
+  it("exposes appId via useAuthAI()", () => {
+    function Probe() {
+      const auth = useAuthAI();
+      return <span data-testid="aid">{auth.appId ?? "none"}</span>;
+    }
+    render(
+      <AuthAIProvider relayUrl="https://r" appName="P" appId="authai_pk_xyz">
+        <Probe />
+      </AuthAIProvider>
+    );
+    expect(screen.getByTestId("aid").textContent).toBe("authai_pk_xyz");
+  });
+
+  it("appId omitted → useAuthAI().appId is null", () => {
+    function Probe() {
+      const auth = useAuthAI();
+      return <span data-testid="aid">{auth.appId ?? "none"}</span>;
+    }
+    render(
+      <AuthAIProvider relayUrl="https://r" appName="P">
+        <Probe />
+      </AuthAIProvider>
+    );
+    expect(screen.getByTestId("aid").textContent).toBe("none");
+  });
+});
+
 describe("<SignIn> with singleton", () => {
   beforeEach(() => {
     resetSingletonForTests();

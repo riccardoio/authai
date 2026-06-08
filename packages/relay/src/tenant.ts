@@ -1,6 +1,13 @@
 import type { Context } from "hono";
 
 /**
+ * How the tenant was resolved on this request. Middleware uses this to
+ * apply route-aware policy (e.g. publishable keys may only reach /auth/*,
+ * not /v1/*).
+ */
+export type CredentialResolutionMethod = "secret" | "publishable" | "origin";
+
+/**
  * A Tenant is the per-request identity context the relay uses to encrypt
  * tokens, hash account IDs, and brand the OAuth consent screen.
  *
@@ -41,16 +48,37 @@ export type Tenant = {
    * `/auth/whoami`. Always undefined in community edition.
    */
   appId?: string;
+
+  /**
+   * How the tenant was resolved. Middleware uses this for route-aware
+   * enforcement (e.g. publishable keys are restricted to /auth/* routes).
+   * Optional to keep community-edition StaticTenantResolver compatible.
+   */
+  resolvedVia?: CredentialResolutionMethod;
+
+  /**
+   * Mirror of apps.credential_type. Middleware uses this for /auth/* policy
+   * decisions. Optional in community edition.
+   */
+  credentialType?: "secret" | "publishable";
+
+  /**
+   * Mirror of apps.browser_direct_enabled. Relay returns 401 for publishable
+   * key requests when this is false. Optional in community edition.
+   */
+  browserDirectEnabled?: boolean;
 };
 
 /**
  * Resolver pulled per-request. Returning `null` means "no tenant for this
  * request" — the relay treats that as a uniform 401 in cloud edition. In
  * community edition the StaticTenantResolver always returns the same
- * Tenant, so null never happens.
+ * Tenant, so null never happens. Returning `"BOTH_HEADERS"` means both
+ * secret and publishable-key headers were present — middleware emits a
+ * 400 conflicting_credentials response.
  */
 export interface TenantResolver {
-  resolve(c: Context): Promise<Tenant | null>;
+  resolve(c: Context): Promise<Tenant | null | "BOTH_HEADERS">;
 }
 
 /**
@@ -102,11 +130,39 @@ export function tenantMiddleware(resolver: TenantResolver) {
     const existing = (c.get("tenant") as unknown) as Tenant | undefined;
     if (existing) return next();
     const tenant = await resolver.resolve(c);
+    if (tenant === "BOTH_HEADERS") {
+      return c.json({ error: "conflicting_credentials" }, 400);
+    }
     if (!tenant) {
       // Match the uniform-401 contract used by /auth/whoami and /v1/*.
       return c.json({ error: "unauthorized" }, 401);
     }
     c.set("tenant", tenant);
+
+    // Route-aware enforcement. Only applies when resolvedVia is explicitly
+    // set (cloud edition). When it's undefined (StaticTenantResolver /
+    // community edition) both gates are skipped — backward compat preserved.
+    if (tenant.resolvedVia !== undefined) {
+      const path = c.req.path;
+
+      // /v1/* may NEVER be reached via Origin-only resolution.
+      // Explicit credential header (secret or publishable key) is required.
+      // Closes the Codex P0-1 tenant-bypass surface.
+      if (path.startsWith("/v1/") && tenant.resolvedVia === "origin") {
+        return c.json({ error: "credential_required" }, 401);
+      }
+
+      // /auth/* on publishable apps requires explicit publishable-key header.
+      // Prevents per-key rate-limit bypass via Origin spoofing.
+      if (
+        path.startsWith("/auth/") &&
+        tenant.credentialType === "publishable" &&
+        tenant.resolvedVia === "origin"
+      ) {
+        return c.json({ error: "credential_required" }, 401);
+      }
+    }
+
     return next();
   };
 }

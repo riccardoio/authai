@@ -13,6 +13,7 @@ export type SingletonConfig = {
   appName: string | null;
   theme: AuthAITheme | null;
   storageSpec: "localStorage" | "memory" | "cookie" | TokenStorage | null;
+  appId: string | null;
 };
 
 export type SingletonSnapshot = {
@@ -26,6 +27,7 @@ export type SingletonSnapshot = {
   verification: { userCode: string; verificationUrl: string } | null;
   error: string | null;
   phase: "idle" | "explain" | "picker" | "fetching" | "code" | "error";
+  appId: string | null;
 };
 
 type Store = {
@@ -54,6 +56,7 @@ function makeInitialState(): SingletonSnapshot {
     verification: null,
     error: null,
     phase: "idle",
+    appId: null,
   };
 }
 
@@ -61,7 +64,7 @@ function getStore(): Store {
   const g = globalThis as any;
   if (!g[KEY]) {
     g[KEY] = {
-      config: { relayUrl: null, appName: null, theme: null, storageSpec: null },
+      config: { relayUrl: null, appName: null, theme: null, storageSpec: null, appId: null },
       storage: null,
       state: makeInitialState(),
       listeners: new Set<() => void>(),
@@ -113,12 +116,14 @@ export function configureSingleton(opts: {
   appName: string;
   theme?: AuthAITheme;
   storage?: "localStorage" | "memory" | "cookie" | TokenStorage;
+  appId?: string;
 }): void {
   if (!isBrowser()) return;
   const store = getStore();
   store.config.relayUrl = opts.relayUrl;
   store.config.appName = opts.appName;
   if (opts.theme !== undefined) store.config.theme = opts.theme;
+  if (opts.appId !== undefined && opts.appId !== "") store.config.appId = opts.appId;
   // Hydrate FIRST so we know whether storage has a JWT before deciding to swap.
   hydrateFromStorageIfNeeded(store);
   if (opts.storage !== undefined && store.state.jwt === null) {
@@ -130,6 +135,7 @@ export function configureSingleton(opts: {
     relayUrl: store.config.relayUrl,
     appName: store.config.appName,
     theme: store.config.theme,
+    appId: store.config.appId,
   };
   emit(store);
 }
@@ -230,6 +236,9 @@ async function startSingletonFlow(provider: ProviderId): Promise<void> {
       relayUrl: store.config.relayUrl,
       provider,
       signal: ctrl.signal,
+      extraHeaders: store.config.appId
+        ? { "x-authai-publishable-key": store.config.appId }
+        : undefined,
       onVerification: ({ userCode, verificationUrl }) => {
         store.state = {
           ...store.state,
@@ -245,6 +254,7 @@ async function startSingletonFlow(provider: ProviderId): Promise<void> {
       relayUrl: store.config.relayUrl,
       appName: store.config.appName,
       theme: store.config.theme,
+      appId: store.config.appId,
       jwt,
       provider: decodeJwtProvider(jwt),
       isSignedIn: true,
@@ -273,7 +283,9 @@ export function signOutSingleton(): void {
   store.abort?.abort();
   const prevJwt = store.state.jwt;
   if (prevJwt && store.config.relayUrl) {
-    revokeSession(store.config.relayUrl, prevJwt).catch(() => {});
+    revokeSession(store.config.relayUrl, prevJwt,
+      store.config.appId ? { "x-authai-publishable-key": store.config.appId } : undefined,
+    ).catch(() => {});
   }
   if (isBrowser()) ensureStorage(store).clear();
   store.state = {
@@ -281,6 +293,7 @@ export function signOutSingleton(): void {
     relayUrl: store.config.relayUrl,
     appName: store.config.appName,
     theme: store.config.theme,
+    appId: store.config.appId,
   };
   emit(store);
 }

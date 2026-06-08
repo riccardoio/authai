@@ -24,6 +24,7 @@ export type AuthAIContextValue = {
   provider: ProviderId | null;
   isSignedIn: boolean;
   error: string | null;
+  appId: string | null;
   signIn: (provider?: ProviderId) => void;
   signOut: () => void;
 };
@@ -43,11 +44,12 @@ export type AuthAIProviderProps = {
   initialJwt?: string | null;
   theme?: AuthAITheme;
   storage?: "localStorage" | "memory" | "cookie" | TokenStorage;
+  appId?: string;
   children: React.ReactNode;
 };
 
 export function AuthAIProvider({
-  relayUrl, appName, initialJwt, theme, storage, children,
+  relayUrl, appName, initialJwt, theme, storage, appId, children,
 }: AuthAIProviderProps) {
   const adapter = useMemo(() => resolveStorage(storage), [storage]);
   const [jwt, setJwt] = useState<string | null>(() => {
@@ -70,6 +72,8 @@ export function AuthAIProvider({
   const [toastVisible, setToastVisible] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const appIdRef = useRef<string | null>(appId ?? null);
+  useEffect(() => { appIdRef.current = appId ?? null; }, [appId]);
 
   const showToast = useCallback(() => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
@@ -118,6 +122,7 @@ export function AuthAIProvider({
         relayUrl,
         provider: providerId,
         signal: ctrl.signal,
+        extraHeaders: appIdRef.current ? { "x-authai-publishable-key": appIdRef.current } : undefined,
         onVerification: ({ verificationUrl, userCode }) => {
           setCode({ userCode, verificationUrl });
           copyCode(userCode);
@@ -177,7 +182,9 @@ export function AuthAIProvider({
 
   const signOut = useCallback(() => {
     abortRef.current?.abort();
-    if (jwt) revokeSession(relayUrl, jwt).catch(() => {});
+    if (jwt) revokeSession(relayUrl, jwt,
+      appIdRef.current ? { "x-authai-publishable-key": appIdRef.current } : undefined,
+    ).catch(() => {});
     adapter.clear();
     setJwt(null);
     reset();
@@ -219,6 +226,7 @@ export function AuthAIProvider({
     provider: jwt ? decodeJwtProvider(jwt) : null,
     isSignedIn: jwt !== null,
     error,
+    appId: appId ?? null,
     signIn,
     signOut,
   };
@@ -270,6 +278,7 @@ function useSingletonContextValue(): AuthAIContextValue {
     provider: snap.provider,
     isSignedIn: snap.isSignedIn,
     error: snap.error,
+    appId: snap.appId,
     signIn: (p) => { void signInSingleton(p); },
     signOut: () => signOutSingleton(),
   }), [snap]);

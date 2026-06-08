@@ -33,6 +33,8 @@ export type SignInOptions = {
     expiresInMs: number;
   }) => void | Promise<void>;
   signal?: AbortSignal;
+  /** Extra headers to send on /auth/start and /auth/poll (e.g. x-authai-publishable-key). */
+  extraHeaders?: Record<string, string>;
 };
 
 export async function signInWithProvider(options: SignInOptions): Promise<string> {
@@ -40,6 +42,7 @@ export async function signInWithProvider(options: SignInOptions): Promise<string
     joinUrl(options.relayUrl, "/auth/start"),
     { provider: options.provider },
     options.signal,
+    options.extraHeaders,
   );
 
   await options.onVerification({
@@ -58,6 +61,7 @@ export async function signInWithProvider(options: SignInOptions): Promise<string
     const poll = await getJson<PollResponse>(
       joinUrl(options.relayUrl, `/auth/poll/${start.sessionId}`),
       options.signal,
+      options.extraHeaders,
     );
     if (poll.status === "complete") return poll.jwt;
     if (poll.status === "error") throw new Error(poll.error || "auth error");
@@ -125,25 +129,31 @@ export function isJwtCurrentlyValid(jwt: string): boolean {
   }
 }
 
-export async function revokeSession(relayUrl: string, jwt: string): Promise<void> {
+export async function revokeSession(
+  relayUrl: string,
+  jwt: string,
+  extraHeaders?: Record<string, string>,
+): Promise<void> {
   await fetch(joinUrl(relayUrl, "/auth/revoke"), {
     method: "POST",
-    headers: { Authorization: `Bearer ${jwt}` },
+    headers: { Authorization: `Bearer ${jwt}`, ...(extraHeaders ?? {}) },
   });
 }
 
-async function postJson<T>(url: string, body?: unknown, signal?: AbortSignal): Promise<T> {
+async function postJson<T>(url: string, body?: unknown, signal?: AbortSignal,
+                          extraHeaders?: Record<string, string>): Promise<T> {
   const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...(extraHeaders ?? {}) },
     body: body !== undefined ? JSON.stringify(body) : undefined,
     signal,
   });
   return readJsonBody<T>(res, url);
 }
 
-async function getJson<T>(url: string, signal?: AbortSignal): Promise<T> {
-  const res = await fetch(url, { signal });
+async function getJson<T>(url: string, signal?: AbortSignal,
+                          extraHeaders?: Record<string, string>): Promise<T> {
+  const res = await fetch(url, { signal, headers: { ...(extraHeaders ?? {}) } });
   return readJsonBody<T>(res, url);
 }
 

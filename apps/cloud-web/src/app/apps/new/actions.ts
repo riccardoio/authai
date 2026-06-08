@@ -1,0 +1,117 @@
+"use server";
+
+import { ulid } from "ulid";
+import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import { getSession, SESSION_COOKIE_NAME } from "@/lib/session";
+import { getFullStore } from "@/lib/db";
+import {
+  classifyOriginTier,
+  normalizeOrigin,
+  hashApiKey,
+  generatePublishableKey,
+} from "@authai/cloud";
+import { verifyCsrf } from "@/lib/csrf";
+import { writeAudit } from "@/lib/audit";
+
+const BLOCKED_HOSTS = ["authai.io", "relay.authai.io", "www.authai.io"];
+
+async function checkCsrf(token: string, action: string): Promise<boolean> {
+  const sc = (await cookies()).get(SESSION_COOKIE_NAME)?.value ?? "";
+  return verifyCsrf({ token, sessionCookieValue: sc, action });
+}
+
+export async function createPublishableAppAction(input: {
+  origin: string;
+  name: string;
+  csrf: string;
+}): Promise<{ redirect?: string; error?: string }> {
+  const session = await getSession();
+  if (!session) {
+    redirect("/sign-in?return=/apps/new");
+  }
+
+  if (!(await checkCsrf(input.csrf, "apps.create.publishable"))) {
+    return { error: "Invalid CSRF token. Refresh and try again." };
+  }
+
+  // Validate + normalize origin.
+  let normalized: string;
+  let url: URL;
+  try {
+    normalized = normalizeOrigin(input.origin);
+    if (!normalized) throw new Error("malformed");
+    url = new URL(normalized);
+    if (BLOCKED_HOSTS.includes(url.hostname)) {
+      return { error: "Origin cannot be authai.io or its subdomains." };
+    }
+    if (
+      url.protocol !== "https:" &&
+      !["localhost", "127.0.0.1"].includes(url.hostname) &&
+      !url.hostname.endsWith(".local")
+    ) {
+      return { error: "Production origins must use https://." };
+    }
+  } catch {
+    return { error: "Origin must be a valid URL like https://my-app.com." };
+  }
+
+  if (!input.name.trim()) {
+    return { error: "Name is required." };
+  }
+
+  const tier = classifyOriginTier(normalized);
+  const appId = `app_${ulid().toLowerCase()}`;
+  const pkPlain = generatePublishableKey();
+  const pkHash = hashApiKey(pkPlain);
+
+  // The apps table requires api_key_hash (UNIQUE).
+  // Publishable apps don't use a secret key; we store a deterministic
+  // placeholder so the UNIQUE constraint is satisfied without leaking a
+  // usable secret into the DB.
+  const placeholderApiKeyHash = hashApiKey(`unused-publishable-${appId}`);
+
+  const store = await getFullStore();
+
+  // Use the transactional createPublishable method so that app + initial
+  // origin + initial key are written atomically. Partial failures can no
+  // longer leave an orphan app row with no key/origin.
+  try {
+    await store.apps.createPublishable({
+      id: appId,
+      apiKeyHash: placeholderApiKeyHash,
+      origin: normalized,
+      originTier: tier,
+      name: input.name.trim(),
+      ownerGithubId: session.githubUserId,
+      ownerEmail: session.githubEmail,
+      pkHash,
+      pkLabel: "initial",
+    });
+  } catch (err: unknown) {
+    const isUniqueViolation =
+      typeof err === "object" &&
+      err !== null &&
+      (("code" in err && (err as { code: unknown }).code === "23505") ||
+        ("message" in err &&
+          typeof (err as { message: unknown }).message === "string" &&
+          (err as { message: string }).message.includes("UNIQUE")));
+    if (isUniqueViolation) {
+      return {
+        error: `Origin ${normalized} is already registered to another AuthAI app. Contact support if you own this domain.`,
+      };
+    }
+    throw err;
+  }
+
+  await writeAudit({
+    appId,
+    actorGhId: session.githubUserId,
+    eventType: "apps.create",
+    payload: { credentialType: "publishable", origin: normalized, tier },
+  });
+
+  return {
+    redirect: `/apps/${appId}/created?type=publishable&pk=${encodeURIComponent(pkPlain)}`,
+  };
+}

@@ -3,6 +3,7 @@ import { SignJWT } from "jose";
 import { createRelayApp } from "./app.js";
 import { encryptJson, generateRecordKey } from "./crypto.js";
 import type { AuthRecord, AuthRecordStore } from "./store.js";
+import type { Tenant, TenantResolver } from "./tenant.js";
 
 /**
  * /v1 routes funnel every authentication failure through one helper so the
@@ -256,5 +257,155 @@ describe("/v1 routes — uniform 401 across all auth failures", () => {
     const unique = new Set(bodies);
     expect(unique.size).toBe(1);
     expect(unique.values().next().value).toBe(JSON.stringify(UNIFORM_401.body));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Route-aware enforcement (Task 2.3)
+// ---------------------------------------------------------------------------
+
+/**
+ * Build a relay app using the dynamic-resolver config so we can inject any
+ * fake Tenant we like without touching env vars or DB rows.
+ */
+function buildAppWithResolver(tenant: Tenant) {
+  const { store } = buildStore();
+  const fakeResolver: TenantResolver = {
+    async resolve() {
+      return tenant;
+    },
+  };
+  const app = createRelayApp({
+    store,
+    jwtSecret: JWT_SECRET,
+    tenantResolver: fakeResolver,
+  });
+  return app;
+}
+
+/**
+ * Minimal fetch helper that hits any path and method.
+ */
+async function hit(
+  app: ReturnType<typeof buildAppWithResolver>,
+  path: string,
+  method = "POST",
+): Promise<{ status: number; body: unknown }> {
+  const res = await app.fetch(
+    new Request(`http://relay.test${path}`, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: method === "POST" ? JSON.stringify({}) : undefined,
+    }),
+  );
+  const body = await res.json();
+  return { status: res.status, body };
+}
+
+describe("/v1/* route-aware enforcement (Task 2.3)", () => {
+  it("401s on /v1/* when tenant.resolvedVia === 'origin' (no explicit credential header)", async () => {
+    const app = buildAppWithResolver({
+      originator: "test",
+      identitySecret: Buffer.alloc(32),
+      appId: "app_1",
+      resolvedVia: "origin",
+      credentialType: "publishable",
+      browserDirectEnabled: true,
+    });
+    const out = await hit(app, "/v1/chat/completions");
+    expect(out.status).toBe(401);
+    expect((out.body as { error: string }).error).toBe("credential_required");
+  });
+
+  it("/v1/* with resolvedVia === 'publishable' is NOT gated by Origin check", async () => {
+    // Tenant resolved via explicit publishable-key header — should not hit
+    // the origin-only gate. The request may still fail further in the stack
+    // (e.g. missing JWT) but must NOT return the credential_required sentinel.
+    const app = buildAppWithResolver({
+      originator: "test",
+      identitySecret: Buffer.alloc(32),
+      appId: "app_1",
+      resolvedVia: "publishable",
+      credentialType: "publishable",
+      browserDirectEnabled: true,
+    });
+    const out = await hit(app, "/v1/models", "GET");
+    // Not 401 with credential_required — any other response shape is fine.
+    if (out.status === 401) {
+      expect((out.body as { error: unknown }).error).not.toBe("credential_required");
+    }
+  });
+
+  it("/auth/* on publishable app rejects Origin-only resolution", async () => {
+    const app = buildAppWithResolver({
+      originator: "test",
+      identitySecret: Buffer.alloc(32),
+      appId: "app_1",
+      resolvedVia: "origin",
+      credentialType: "publishable",
+      browserDirectEnabled: true,
+    });
+    const out = await hit(app, "/auth/start");
+    expect(out.status).toBe(401);
+    expect((out.body as { error: string }).error).toBe("credential_required");
+  });
+
+  it("/auth/* on secret app allows Origin-only resolution (backward compat)", async () => {
+    // Secret-key apps doing browser-direct should NOT be blocked — the gate
+    // only fires when credentialType === 'publishable'.
+    const app = buildAppWithResolver({
+      originator: "test",
+      identitySecret: Buffer.alloc(32),
+      appId: "app_1",
+      resolvedVia: "origin",
+      credentialType: "secret",
+      browserDirectEnabled: false,
+    });
+    const out = await hit(app, "/auth/start");
+    // Must NOT return 401 credential_required (any other status is fine).
+    if (out.status === 401) {
+      expect((out.body as { error: unknown }).error).not.toBe("credential_required");
+    }
+  });
+
+  it("legacy tenants with undefined resolvedVia are not gated on /v1/*", async () => {
+    // StaticTenantResolver never sets resolvedVia; the rule must be a no-op.
+    const app = buildAppWithResolver({
+      originator: "test",
+      identitySecret: Buffer.alloc(32),
+      // No resolvedVia / credentialType — mimics StaticTenantResolver
+    });
+    const out = await hit(app, "/v1/chat/completions");
+    // Must NOT short-circuit with credential_required.
+    if (out.status === 401) {
+      expect((out.body as { error: unknown }).error).not.toBe("credential_required");
+    }
+  });
+});
+
+describe("CORS preflight (Task 2.4)", () => {
+  it("allows x-authai-publishable-key in preflight Access-Control-Allow-Headers", async () => {
+    const app = buildAppWithResolver({
+      originator: "test",
+      identitySecret: Buffer.alloc(32),
+      appId: "app_1",
+      resolvedVia: "publishable",
+      credentialType: "publishable",
+      browserDirectEnabled: true,
+    });
+    const res = await app.fetch(
+      new Request("http://relay.test/v1/chat/completions", {
+        method: "OPTIONS",
+        headers: {
+          "origin": "https://x.lovable.app",
+          "access-control-request-method": "POST",
+          "access-control-request-headers": "x-authai-publishable-key, authorization, content-type",
+        },
+      }),
+    );
+    expect(res.status).toBeLessThan(400);
+    const allowHeaders = (res.headers.get("access-control-allow-headers") ?? "").toLowerCase();
+    expect(allowHeaders).toContain("x-authai-publishable-key");
+    expect(allowHeaders).toContain("authorization");
   });
 });

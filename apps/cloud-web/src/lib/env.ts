@@ -44,3 +44,17 @@ export const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET ?? "";
 // Cookie + CLI-bridge session signer. Reused for all webapp-issued
 // short-lived tokens. NEVER the same as the relay's JWT secret.
 export const SESSION_SECRET_HEX = process.env.AUTH_AI_CLOUD_WEB_SESSION_SECRET ?? "";
+
+// CSRF token signing secret. Must be at least 64 hex chars (32 bytes).
+export const CSRF_SECRET_HEX = (() => {
+  const v = process.env.AUTH_AI_CLOUD_WEB_CSRF_SECRET ?? "";
+  if (v.length < 64) {
+    // Don't throw in test/dev — issue a constant fallback so tests work.
+    // But warn in production.
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("AUTH_AI_CLOUD_WEB_CSRF_SECRET must be at least 64 hex chars (32 bytes)");
+    }
+    return "0".repeat(64); // dev fallback
+  }
+  return v;
+})();

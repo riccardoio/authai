@@ -1,66 +1,11 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import type { AuthRecordStore } from "@authai/relay";
-import { createPostgresStore, createStore } from "./index.js";
-import type { AppStore, AppAdminStore, AuditEventStore, PostgresStore } from "./index.js";
+import { createStore } from "./index.js";
 
-/**
- * Type-level smoke test. Confirms the Postgres store actually implements
- * the @authai/relay AuthRecordStore interface AND exposes the cloud-only
- * AppAdminStore / AuditEventStore sub-stores. Doesn't connect to a real DB.
- *
- * Real integration tests against a live Postgres are run separately —
- * spin up a container locally:
- *
- *   docker run -d --rm --name authai-pg \
- *     -e POSTGRES_PASSWORD=test -p 5432:5432 postgres:16
- *   AUTHAI_TEST_POSTGRES_URL=postgres://postgres:test@localhost:5432/postgres \
- *     pnpm --filter @authai/relay-store-postgres test
- *
- * Those are deliberately not run in the default test suite because they
- * need a side dependency the rest of the repo doesn't.
- */
-describe("PostgresStore type compatibility", () => {
-  it("createPostgresStore returns AuthRecordStore + apps + audit", () => {
-    // Static type assertion via constructed signature — we never call it
-    // here because the assignment alone exercises the type relationship.
-    type _Returned = ReturnType<typeof createPostgresStore>;
-    const fn: (url: string) => Promise<PostgresStore> = (url) =>
-      createPostgresStore({ connectionString: url, skipSchema: true });
-    expect(typeof fn).toBe("function");
-  });
+describe("SQLite store — new credential/origin columns", () => {
+  let store: ReturnType<typeof createStore>;
 
-  it("PostgresStore is assignable to AuthRecordStore", () => {
-    // Same kind of type-only check: would not compile if the assignment
-    // weren't valid. The runtime body never executes the lambda.
-    const check = (s: PostgresStore): AuthRecordStore => s;
-    expect(typeof check).toBe("function");
-  });
-
-  it("AppStore, AppAdminStore and AuditEventStore are exported", () => {
-    const _appStore: AppStore | undefined = undefined;
-    const _appAdminStore: AppAdminStore | undefined = undefined;
-    const _auditStore: AuditEventStore | undefined = undefined;
-    expect(_appStore).toBeUndefined();
-    expect(_appAdminStore).toBeUndefined();
-    expect(_auditStore).toBeUndefined();
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Integration tests — skip unless AUTHAI_TEST_POSTGRES_URL is set
-// ---------------------------------------------------------------------------
-
-const TEST_DB_URL = process.env.AUTHAI_TEST_POSTGRES_URL;
-const describeIfPg = TEST_DB_URL ? describe : describe.skip;
-
-describeIfPg("Postgres store — new credential/origin columns", () => {
-  let store: AppStore & { _pool: import("pg").Pool };
-
-  beforeEach(async () => {
-    store = await createStore({ url: TEST_DB_URL! });
-    await store._pool.query(
-      "TRUNCATE TABLE app_publishable_keys, app_origins, audit_events, apps RESTART IDENTITY CASCADE",
-    );
+  beforeEach(() => {
+    store = createStore({ url: ":memory:" });
   });
 
   it("apps table has credential_type column (defaults to 'secret')", async () => {
@@ -90,14 +35,11 @@ describeIfPg("Postgres store — new credential/origin columns", () => {
   });
 });
 
-describeIfPg("Postgres store — app_origins table", () => {
-  let store: AppStore & { _pool: import("pg").Pool };
+describe("SQLite store — app_origins table", () => {
+  let store: ReturnType<typeof createStore>;
 
-  beforeEach(async () => {
-    store = await createStore({ url: TEST_DB_URL! });
-    await store._pool.query(
-      "TRUNCATE TABLE app_publishable_keys, app_origins, audit_events, apps RESTART IDENTITY CASCADE",
-    );
+  beforeEach(() => {
+    store = createStore({ url: ":memory:" });
   });
 
   it("addOrigin inserts a row and listForApp returns it", async () => {
@@ -191,14 +133,11 @@ describeIfPg("Postgres store — app_origins table", () => {
   });
 });
 
-describeIfPg("Postgres store — app_publishable_keys table", () => {
-  let store: AppStore & { _pool: import("pg").Pool };
+describe("SQLite store — app_publishable_keys table", () => {
+  let store: ReturnType<typeof createStore>;
 
-  beforeEach(async () => {
-    store = await createStore({ url: TEST_DB_URL! });
-    await store._pool.query(
-      "TRUNCATE TABLE app_publishable_keys, app_origins, audit_events, apps RESTART IDENTITY CASCADE",
-    );
+  beforeEach(() => {
+    store = createStore({ url: ":memory:" });
   });
 
   it("createKey inserts a row and listForApp returns it", async () => {
@@ -260,6 +199,65 @@ describeIfPg("Postgres store — app_publishable_keys table", () => {
     });
     await store.publishableKeys.revoke(key.id, "ghid");
     const result = await store.publishableKeys.getActiveByHash("deadbeef");
+    expect(result).toBeNull();
+  });
+});
+
+describe("SQLite store — app-scoped IDOR-safe mutations", () => {
+  let store: ReturnType<typeof createStore>;
+
+  beforeEach(() => {
+    store = createStore({ url: ":memory:" });
+  });
+
+  it("setStatusForApp returns false when originId belongs to a different app", async () => {
+    await store.apps.create({ id: "app_a", apiKeyHash: "ha", origin: "https://a.com", name: "A", ownerGithubId: "g", originVerifyToken: "t" });
+    await store.apps.create({ id: "app_b", apiKeyHash: "hb", origin: "https://b.com", name: "B", ownerGithubId: "g", originVerifyToken: "t" });
+    const origin = await store.origins.add({ appId: "app_a", origin: "https://c.com", tier: "production" });
+    // app_b tries to disable app_a's origin — should be blocked
+    const ok = await store.origins.setStatusForApp("app_b", origin.id, "disabled");
+    expect(ok).toBe(false);
+    // origin should still be active
+    const list = await store.origins.listForApp("app_a");
+    expect(list.find((o) => o.id === origin.id)?.status).toBe("active");
+  });
+
+  it("setStatusForApp returns true when originId belongs to the correct app", async () => {
+    await store.apps.create({ id: "app_a", apiKeyHash: "ha", origin: "https://a.com", name: "A", ownerGithubId: "g", originVerifyToken: "t" });
+    const origin = await store.origins.add({ appId: "app_a", origin: "https://d.com", tier: "production" });
+    const ok = await store.origins.setStatusForApp("app_a", origin.id, "disabled");
+    expect(ok).toBe(true);
+    const list = await store.origins.listForApp("app_a");
+    expect(list.find((o) => o.id === origin.id)?.status).toBe("disabled");
+  });
+
+  it("removeForApp returns false when originId belongs to a different app", async () => {
+    await store.apps.create({ id: "app_a", apiKeyHash: "ha", origin: "https://a.com", name: "A", ownerGithubId: "g", originVerifyToken: "t" });
+    await store.apps.create({ id: "app_b", apiKeyHash: "hb", origin: "https://b.com", name: "B", ownerGithubId: "g", originVerifyToken: "t" });
+    const origin = await store.origins.add({ appId: "app_a", origin: "https://e.com", tier: "production" });
+    const ok = await store.origins.removeForApp("app_b", origin.id);
+    expect(ok).toBe(false);
+    const list = await store.origins.listForApp("app_a");
+    expect(list.find((o) => o.id === origin.id)).toBeDefined();
+  });
+
+  it("revokeForApp returns false when keyId belongs to a different app", async () => {
+    await store.apps.create({ id: "app_a", apiKeyHash: "ha", origin: "https://a.com", name: "A", ownerGithubId: "g", originVerifyToken: "t", credentialType: "publishable" });
+    await store.apps.create({ id: "app_b", apiKeyHash: "hb", origin: "https://b.com", name: "B", ownerGithubId: "g", originVerifyToken: "t", credentialType: "publishable" });
+    const key = await store.publishableKeys.create({ appId: "app_a", keyHash: "keyhash1", createdBy: "g" });
+    const ok = await store.publishableKeys.revokeForApp("app_b", key.id, "g");
+    expect(ok).toBe(false);
+    // key should still be active
+    const result = await store.publishableKeys.getActiveByHash("keyhash1");
+    expect(result?.key.status).toBe("active");
+  });
+
+  it("revokeForApp returns true when keyId belongs to the correct app", async () => {
+    await store.apps.create({ id: "app_a", apiKeyHash: "ha", origin: "https://a.com", name: "A", ownerGithubId: "g", originVerifyToken: "t", credentialType: "publishable" });
+    const key = await store.publishableKeys.create({ appId: "app_a", keyHash: "keyhash2", createdBy: "g" });
+    const ok = await store.publishableKeys.revokeForApp("app_a", key.id, "g");
+    expect(ok).toBe(true);
+    const result = await store.publishableKeys.getActiveByHash("keyhash2");
     expect(result).toBeNull();
   });
 });

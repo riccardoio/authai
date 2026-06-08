@@ -5,6 +5,9 @@ export const metadata: Metadata = {
   title: "AuthAI — auth for AI builders",
   description:
     "Build AI products without the AI bill. Your users sign in with their AI subscription; every model call lands on their plan. Across ChatGPT, Grok, and Copilot. Free, open-source, self-hostable.",
+  alternates: {
+    types: { "text/markdown": "/llms.txt" },
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

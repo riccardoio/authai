@@ -1,33 +1,87 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ulid } from "ulid";
-import { getSession } from "@/lib/session";
+import { getSession, SESSION_COOKIE_NAME } from "@/lib/session";
 import { getStore } from "@/lib/db";
-import { generateApiKey, hashApiKey, normalizeOrigin } from "@authai/cloud";
+import { generateApiKey, hashApiKey, normalizeOrigin, classifyOriginTier } from "@authai/cloud";
 import { CLI_BRIDGE_COOKIE, verifyBridge } from "@/lib/cli-bridge";
 import { setOneTimeKey } from "@/lib/one-time-key";
 import { cookies } from "next/headers";
+import { issueCsrfToken, verifyCsrf } from "@/lib/csrf";
 import { AuthedShell } from "../../authed-shell";
+import { PublishableConfirmForm } from "./publishable-form";
 
 export default async function NewAppPage({
   searchParams,
 }: {
-  searchParams: Promise<{ cli?: string }>;
+  searchParams: Promise<{ cli?: string; type?: string; origin?: string; name?: string }>;
 }) {
   const session = await getSession();
   if (!session) redirect("/sign-in?return=/apps/new");
 
   const params = await searchParams;
+
+  // Publishable-app branch — wired by the AI codegen CLI via
+  //   /apps/new?type=publishable&origin=https://my-app.com&name=My+App
+  if (params.type === "publishable") {
+    if (!params.origin) {
+      return (
+        <AuthedShell githubLogin={session.githubLogin} breadcrumb="New publishable app">
+          <h1>Can't create app</h1>
+          <p>Missing <code>origin</code> query parameter.</p>
+          <p><Link href="/apps/new" className="au-btn au-btn-secondary">Create an app manually instead</Link></p>
+        </AuthedShell>
+      );
+    }
+    const presetOrigin = normalizeOrigin(params.origin);
+    if (!presetOrigin) {
+      return (
+        <AuthedShell githubLogin={session.githubLogin} breadcrumb="New publishable app">
+          <h1>Can't create app</h1>
+          <p>The <code>origin</code> query parameter is not a valid URL.</p>
+          <p><Link href="/apps/new" className="au-btn au-btn-secondary">Create an app manually instead</Link></p>
+        </AuthedShell>
+      );
+    }
+    const presetName = params.name?.trim() || new URL(presetOrigin).hostname;
+    const tier = classifyOriginTier(presetOrigin);
+    const sessionCookie = (await cookies()).get(SESSION_COOKIE_NAME)?.value ?? "";
+    const csrfToken = await issueCsrfToken({ sessionCookieValue: sessionCookie, action: "apps.create.publishable" });
+    return (
+      <AuthedShell githubLogin={session.githubLogin} breadcrumb="New publishable app">
+        <PublishableConfirmForm
+          sessionEmail={session.githubEmail ?? session.githubLogin}
+          origin={presetOrigin}
+          name={presetName}
+          tier={tier}
+          csrfToken={csrfToken}
+        />
+      </AuthedShell>
+    );
+  }
+
   const isCliFlow = params.cli === "1";
+
+  const sessionCookieForCsrf = (await cookies()).get(SESSION_COOKIE_NAME)?.value ?? "";
+  const secretCreateCsrfToken = await issueCsrfToken({
+    sessionCookieValue: sessionCookieForCsrf,
+    action: "apps.create.secret",
+  });
 
   async function createApp(formData: FormData) {
     "use server";
     const session = await getSession();
     if (!session) redirect("/sign-in?return=/apps/new");
 
+    const csrfField = String(formData.get("_csrf") ?? "");
+    const sc = (await cookies()).get(SESSION_COOKIE_NAME)?.value ?? "";
+    const csrfValid = await verifyCsrf({ token: csrfField, sessionCookieValue: sc, action: "apps.create.secret" });
+    if (!csrfValid) throw new Error("Invalid CSRF token. Refresh and try again.");
+
     const name = String(formData.get("name") ?? "").trim();
     const rawOrigin = String(formData.get("origin") ?? "").trim();
     const cliMode = String(formData.get("cli") ?? "") === "1";
+    const includeTemplate = formData.get("includeTemplate") === "supabase";
 
     if (!name || name.length > 80) {
       throw new Error("name must be 1-80 chars");
@@ -108,7 +162,7 @@ export default async function NewAppPage({
       }
     }
 
-    redirect(`/apps/${id}/created`);
+    redirect(`/apps/${id}/created${includeTemplate ? "?template=supabase" : ""}`);
   }
 
   return (
@@ -128,6 +182,7 @@ export default async function NewAppPage({
 
       <form action={createApp}>
         {isCliFlow && <input type="hidden" name="cli" value="1" />}
+        <input type="hidden" name="_csrf" value={secretCreateCsrfToken} />
 
         <label className="au-label" htmlFor="name">App name</label>
         <input
@@ -157,6 +212,11 @@ export default async function NewAppPage({
           production, <code>http://localhost:3000</code> for local dev. No
           paths or query strings.
         </div>
+
+        <label style={{ display: "block", marginTop: "1rem" }}>
+          <input type="checkbox" name="includeTemplate" value="supabase" />
+          {" "}Generate a Supabase Edge Function template (proxies AuthAI from your Supabase project)
+        </label>
 
         <p style={{ marginTop: 32, display: "flex", gap: 12 }}>
           <button className="au-btn" type="submit">

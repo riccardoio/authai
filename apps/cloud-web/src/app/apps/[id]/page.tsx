@@ -1,9 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ulid } from "ulid";
-import { getSession } from "@/lib/session";
-import { getStore } from "@/lib/db";
+import { getSession, SESSION_COOKIE_NAME } from "@/lib/session";
+import { getFullStore, getStore } from "@/lib/db";
+import { cookies } from "next/headers";
+import { issueCsrfToken, verifyCsrf } from "@/lib/csrf";
 import { AuthedShell } from "../../authed-shell";
+import { OriginsSection } from "./origins-section";
+import { KeysSection } from "./keys-section";
 
 export default async function AppDetailPage({
   params,
@@ -13,14 +17,21 @@ export default async function AppDetailPage({
   const session = await getSession();
   if (!session) redirect("/sign-in");
   const { id } = await params;
+  // Legacy flat store: carries apps + audit namespaces used by this page.
   const store = await getStore();
   const app = await store.apps.getById(id);
   if (!app || app.ownerGithubId !== session.githubUserId) redirect("/dashboard");
 
-  async function revoke(_: FormData) {
+  async function revoke(formData: FormData) {
     "use server";
     const session = await getSession();
     if (!session) redirect("/sign-in");
+
+    const csrfField = String(formData.get("_csrf") ?? "");
+    const sc = (await cookies()).get(SESSION_COOKIE_NAME)?.value ?? "";
+    const csrfValid = await verifyCsrf({ token: csrfField, sessionCookieValue: sc, action: "apps.revoke" });
+    if (!csrfValid) throw new Error("Invalid CSRF token. Refresh and try again.");
+
     const store = await getStore();
     const existing = await store.apps.getById(id);
     if (!existing || existing.ownerGithubId !== session.githubUserId) {
@@ -43,6 +54,30 @@ export default async function AppDetailPage({
   }
 
   const recentEvents = await store.audit.listByApp(id, 20);
+  // Full store provides the origins namespace (not available on the legacy store).
+  const fullStore = await getFullStore();
+  const origins =
+    app.credentialType === "publishable"
+      ? await fullStore.origins.listForApp(app.id)
+      : [];
+
+  const sessionCookie = (await cookies()).get(SESSION_COOKIE_NAME)?.value ?? "";
+  const csrfTokens = {
+    add: await issueCsrfToken({ sessionCookieValue: sessionCookie, action: "origins.add" }),
+    disable: await issueCsrfToken({ sessionCookieValue: sessionCookie, action: "origins.disable" }),
+    enable: await issueCsrfToken({ sessionCookieValue: sessionCookie, action: "origins.enable" }),
+    remove: await issueCsrfToken({ sessionCookieValue: sessionCookie, action: "origins.remove" }),
+  };
+
+  const keys =
+    app.credentialType === "publishable"
+      ? await fullStore.publishableKeys.listForApp(app.id)
+      : [];
+  const keyCsrfTokens = {
+    rotate: await issueCsrfToken({ sessionCookieValue: sessionCookie, action: "keys.rotate" }),
+    revoke: await issueCsrfToken({ sessionCookieValue: sessionCookie, action: "keys.revoke" }),
+  };
+  const revokeCsrfToken = await issueCsrfToken({ sessionCookieValue: sessionCookie, action: "apps.revoke" });
 
   return (
     <AuthedShell githubLogin={session.githubLogin} breadcrumb={app.name}>
@@ -75,6 +110,14 @@ export default async function AppDetailPage({
         </div>
       </div>
 
+      {app.credentialType === "publishable" && (
+        <OriginsSection appId={app.id} origins={origins} csrfTokens={csrfTokens} />
+      )}
+
+      {app.credentialType === "publishable" && (
+        <KeysSection appId={app.id} keys={keys} csrfTokens={keyCsrfTokens} />
+      )}
+
       <h2>Recent events</h2>
       {recentEvents.length === 0 ? (
         <div className="au-empty">No events yet.</div>
@@ -103,6 +146,7 @@ export default async function AppDetailPage({
           new sign-ins are blocked. The audit log row is preserved.
         </p>
         <form action={revoke}>
+          <input type="hidden" name="_csrf" value={revokeCsrfToken} />
           <button className="au-btn au-btn-danger" type="submit">
             Revoke app
           </button>

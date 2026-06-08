@@ -8,3 +8,4 @@ export { localStorageAdapter, memoryAdapter, cookieAdapter, resolveStorage } fro
 export type { TokenStorage, CookieOptions } from "./storage.js";
 export type { AuthAITheme, AuthAIColors, ResolvedTheme } from "./dialog/theme.js";
 export type { ProviderId, ProviderInfo } from "./auth.js";
+export { isJwtCurrentlyValid } from "./auth.js";

@@ -1,0 +1,43 @@
+name: llms.txt integrity
+
+on:
+  pull_request:
+    paths:
+      - "apps/cloud-web/public/llms.txt"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Banned-pattern grep
+        run: |
+          FILE=apps/cloud-web/public/llms.txt
+
+          # 1. Provisioning URL allowlist — only authai.io/apps/new is OK
+          if grep -E "https?://[^[:space:]]+/apps/new" "$FILE" | grep -v "authai.io/apps/new"; then
+            echo "FAIL: non-authai.io provisioning URL found"
+            exit 1
+          fi
+
+          # 2. Reject "always safe" / "completely safe" applied to publishable keys
+          if grep -iE "(always|completely) safe" "$FILE"; then
+            echo "FAIL: overly-comforting safety language"
+            exit 1
+          fi
+
+          # 3. dangerouslyAllowBrowser must appear only in the Prototype path section
+          # (heuristic — counts occurrences before vs after the prototype-path heading)
+          BEFORE=$(awk '/^## Prototype path/{exit} 1' "$FILE" | grep -c "dangerouslyAllowBrowser" || true)
+          if [ "$BEFORE" -gt 0 ]; then
+            echo "FAIL: dangerouslyAllowBrowser appears outside the Prototype path section"
+            exit 1
+          fi
+
+          echo "OK — all checks passed"
+
+      - name: Diff preview for reviewer
+        if: always()
+        run: |
+          git diff "origin/${{ github.base_ref }}..HEAD" -- apps/cloud-web/public/llms.txt || true
