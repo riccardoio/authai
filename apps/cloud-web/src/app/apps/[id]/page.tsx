@@ -2,8 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ulid } from "ulid";
 import { getSession } from "@/lib/session";
-import { getStore } from "@/lib/db";
+import { getFullStore, getStore } from "@/lib/db";
 import { AuthedShell } from "../../authed-shell";
+import { OriginsSection } from "./origins-section";
 
 export default async function AppDetailPage({
   params,
@@ -13,6 +14,7 @@ export default async function AppDetailPage({
   const session = await getSession();
   if (!session) redirect("/sign-in");
   const { id } = await params;
+  // Legacy flat store: carries apps + audit namespaces used by this page.
   const store = await getStore();
   const app = await store.apps.getById(id);
   if (!app || app.ownerGithubId !== session.githubUserId) redirect("/dashboard");
@@ -43,6 +45,12 @@ export default async function AppDetailPage({
   }
 
   const recentEvents = await store.audit.listByApp(id, 20);
+  // Full store provides the origins namespace (not available on the legacy store).
+  const fullStore = await getFullStore();
+  const origins =
+    app.credentialType === "publishable"
+      ? await fullStore.origins.listForApp(app.id)
+      : [];
 
   return (
     <AuthedShell githubLogin={session.githubLogin} breadcrumb={app.name}>
@@ -74,6 +82,10 @@ export default async function AppDetailPage({
           <strong>{app.dailyRequestCap}</strong>
         </div>
       </div>
+
+      {app.credentialType === "publishable" && (
+        <OriginsSection appId={app.id} origins={origins} />
+      )}
 
       <h2>Recent events</h2>
       {recentEvents.length === 0 ? (
