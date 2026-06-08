@@ -1,4 +1,5 @@
 import { hkdfSync, createHash, randomBytes } from "node:crypto";
+import { PREVIEW_HOST_SUFFIXES } from "./preview-allowlist.js";
 
 /**
  * Derive a 32-byte per-app identitySecret from a single master secret + appId.
@@ -98,4 +99,50 @@ export function normalizeOrigin(input: string): string | null {
   // (80 for http, 443 for https). That's exactly the shape browsers
   // send in the Origin header.
   return url.origin;
+}
+
+/**
+ * Generate a new browser-safe publishable key. Returned to the developer
+ * ONCE at app creation; the relay only stores the hash. Origin-pinned at
+ * the relay — useless from a non-registered origin (browser-side) and
+ * abuse-controlled via rate limits + dashboard signals (server-side
+ * spoof).
+ *
+ * Format: `authai_pk_` + 32 bytes of base64url. Prefix lets leak scanners
+ * and engineers tell publishable keys apart from `AUTH_AI_SECRET`
+ * (`authai_v1_*`) at a glance.
+ */
+export function generatePublishableKey(): string {
+  return `authai_pk_${randomBytes(32).toString("base64url")}`;
+}
+
+/**
+ * Classify an Origin string into a tier used for rate-limit policy.
+ *
+ *   - localhost: dev-only; very strict per-IP limits
+ *   - preview:   curated allowlist of preview platforms (lovable.app, v0.dev, etc.)
+ *   - production: everything else; standard cloud-edition limits
+ *
+ * Tier is informational in v1 — no DNS verification — but determines
+ * which rate-limit bucket applies in @authai/cloud's kill-switch.
+ */
+export type OriginTier = "localhost" | "preview" | "production";
+
+export function classifyOriginTier(origin: string): OriginTier {
+  let url: URL;
+  try {
+    url = new URL(origin);
+  } catch {
+    return "production"; // upstream validation rejects unparseable
+  }
+  const host = url.hostname;
+  if (host === "localhost" || host === "127.0.0.1" || host.endsWith(".local")) {
+    return "localhost";
+  }
+  for (const suffix of PREVIEW_HOST_SUFFIXES) {
+    if (host === suffix || host.endsWith(`.${suffix}`)) {
+      return "preview";
+    }
+  }
+  return "production";
 }

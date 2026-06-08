@@ -5,6 +5,8 @@ import {
   generateApiKey,
   generateVerifyToken,
   normalizeOrigin,
+  generatePublishableKey,
+  classifyOriginTier,
 } from "./identity.js";
 
 describe("identity", () => {
@@ -115,5 +117,59 @@ describe("normalizeOrigin", () => {
     // header on subsequent /auth/start is "https://myapp.com", both
     // normalize identically.
     expect(normalizeOrigin("https://myapp.com/")).toBe(normalizeOrigin("https://myapp.com"));
+  });
+});
+
+describe("generatePublishableKey", () => {
+  it("returns a key with the authai_pk_ prefix", () => {
+    const key = generatePublishableKey();
+    expect(key).toMatch(/^authai_pk_[A-Za-z0-9_-]{40,}$/);
+  });
+
+  it("returns a unique key on each call", () => {
+    const keys = new Set(Array.from({ length: 100 }, () => generatePublishableKey()));
+    expect(keys.size).toBe(100);
+  });
+
+  it("hashes consistently with hashApiKey", () => {
+    // Publishable keys reuse the same hashing as secret keys (SHA-256).
+    const key = generatePublishableKey();
+    const h1 = hashApiKey(key);
+    const h2 = hashApiKey(key);
+    expect(h1).toBe(h2);
+    expect(h1).toMatch(/^[0-9a-f]{64}$/);
+  });
+});
+
+describe("classifyOriginTier", () => {
+  it("classifies localhost", () => {
+    expect(classifyOriginTier("http://localhost:3000")).toBe("localhost");
+    expect(classifyOriginTier("http://127.0.0.1:5173")).toBe("localhost");
+    expect(classifyOriginTier("http://myapp.local")).toBe("localhost");
+  });
+
+  it("classifies known preview suffixes as preview", () => {
+    expect(classifyOriginTier("https://my-app.lovable.app")).toBe("preview");
+    expect(classifyOriginTier("https://demo.v0.dev")).toBe("preview");
+    expect(classifyOriginTier("https://x.bolt.new")).toBe("preview");
+    expect(classifyOriginTier("https://abc.stackblitz.io")).toBe("preview");
+    expect(classifyOriginTier("https://def.codesandbox.io")).toBe("preview");
+    expect(classifyOriginTier("https://ghi.repl.co")).toBe("preview");
+    expect(classifyOriginTier("https://jkl.vercel.app")).toBe("preview");
+    expect(classifyOriginTier("https://mno.netlify.app")).toBe("preview");
+  });
+
+  it("classifies everything else as production", () => {
+    expect(classifyOriginTier("https://my-app.com")).toBe("production");
+    expect(classifyOriginTier("https://app.example.io")).toBe("production");
+    expect(classifyOriginTier("https://subdomain.foo.org")).toBe("production");
+  });
+
+  it("requires https for non-localhost", () => {
+    // production HTTP is rejected upstream; tier classification just
+    // describes the URL shape and shouldn't crash on it. But http://
+    // for a production domain is suspicious — return 'production' so
+    // the validation layer rejects it.
+    expect(classifyOriginTier("http://example.com")).toBe("production");
   });
 });
