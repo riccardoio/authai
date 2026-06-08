@@ -5,6 +5,7 @@ import { CodePreview } from "./code-preview";
 import { ThemeRoot, SunIcon, MoonIcon } from "./theme-toggle";
 import { SiteFooter } from "./site-footer";
 import { TerminalSnippet } from "./terminal-snippet";
+import { GitHubStarsButton } from "./github-stars-button";
 
 const GITHUB_URL = "https://github.com/riccardoio/authai";
 
@@ -53,7 +54,7 @@ export function LandingClient({ session }: { session: SessionShape }) {
 
           <main className="landing-hero">
             <div className="landing-hero-text">
-              <span className="landing-eyebrow">Auth for AI builders</span>
+              <span className="landing-eyebrow">Open source AI auth for builders</span>
 
               <h1 className="landing-headline">
                 Build AI products <em>without the AI bill.</em>
@@ -68,10 +69,7 @@ export function LandingClient({ session }: { session: SessionShape }) {
               </p>
 
               <div className="landing-cta">
-                <a className="landing-btn-ghost" href={GITHUB_URL} target="_blank" rel="noreferrer">
-                  <GithubIcon />
-                  Source on GitHub
-                </a>
+                <GitHubStarsButton />
                 <Link
                   href={session ? "/dashboard" : "/sign-in"}
                   className="landing-btn-primary"
@@ -103,6 +101,50 @@ export function LandingClient({ session }: { session: SessionShape }) {
                 Read the security model →
               </Link>
             </p>
+          </section>
+
+          <section className="landing-runways" aria-labelledby="runways-heading">
+            <h2 id="runways-heading" className="landing-runways-heading">
+              Two ways to run it
+            </h2>
+            <div className="landing-runways-grid">
+              <article className="landing-runway">
+                <span className="landing-runway-tag">AuthAI Cloud</span>
+                <h3 className="landing-runway-title">Hosted, free</h3>
+                <p className="landing-runway-body">
+                  We run the relay at <code>relay.authai.io</code>. You write
+                  zero infra — sign in with GitHub, create an app, get a key.
+                  ~30 seconds.
+                </p>
+                <Link
+                  href={session ? "/dashboard" : "/sign-in"}
+                  className="landing-runway-cta"
+                >
+                  {session ? "Open dashboard" : "Get a key"}
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                    <polyline points="12 5 19 12 12 19" />
+                  </svg>
+                </Link>
+              </article>
+              <article className="landing-runway">
+                <span className="landing-runway-tag">Self-hosted</span>
+                <h3 className="landing-runway-title">Your servers, your data</h3>
+                <p className="landing-runway-body">
+                  MIT licensed. <code>docker compose up</code> and you own the
+                  whole stack. Postgres + Redis, no external service required.
+                </p>
+                <Link href="/docs/installation" className="landing-runway-cta">
+                  Read the install docs
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                    <polyline points="12 5 19 12 12 19" />
+                  </svg>
+                </Link>
+              </article>
+            </div>
           </section>
 
           <section className="landing-flow" aria-labelledby="how-it-works">

@@ -1895,6 +1895,157 @@ a { color: inherit; }
   color: #5aa6ff;
 }
 
+/* === GitHub stars pill (replaces the old "Source on GitHub" ghost) === */
+.landing-stars-btn {
+  /* Inherits .landing-btn-ghost; just tightens spacing for the
+     two-part label and bumps the star icon's color to brand yellow
+     so the "open source" signal lands at a glance. */
+  gap: 8px;
+  padding: 0 18px;
+  font-variant-numeric: tabular-nums;
+}
+.landing-stars-btn svg {
+  color: #f5a524;
+}
+.landing-stars-count {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.landing-stars-label {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+.landing[data-theme="dark"] .landing-stars-count {
+  color: #fff;
+}
+.landing[data-theme="dark"] .landing-stars-label {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* === Runways — "Two ways to run it" cards === */
+.landing-runways {
+  width: 100%;
+  max-width: 1100px;
+  margin: 8px auto 0;
+  padding: 48px 24px 56px;
+}
+.landing-runways-heading {
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  margin: 0 0 24px;
+  text-align: center;
+  color: var(--text-primary);
+}
+.landing-runways-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+}
+.landing-runway {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px 24px 22px;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: border-color var(--dur-micro) var(--ease-standard),
+    transform var(--dur-micro) var(--ease-standard),
+    box-shadow var(--dur-micro) var(--ease-standard);
+}
+.landing-runway:hover {
+  border-color: var(--border-darker);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
+}
+.landing-runway-tag {
+  display: inline-block;
+  width: fit-content;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 4px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 5px;
+}
+.landing-runway-title {
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  margin: 0;
+  color: var(--text-primary);
+}
+.landing-runway-body {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  flex: 1;
+}
+.landing-runway-body code {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--text-body);
+  background: var(--surface-muted);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+.landing-runway-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  margin-top: 8px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  border-bottom: 1px solid var(--text-primary);
+  padding-bottom: 1px;
+  transition: opacity var(--dur-micro) var(--ease-standard),
+    gap var(--dur-micro) var(--ease-standard);
+}
+.landing-runway-cta:hover {
+  opacity: 0.7;
+}
+.landing-runway-cta:hover svg {
+  transform: translateX(2px);
+}
+.landing-runway-cta svg {
+  transition: transform var(--dur-micro) var(--ease-standard);
+}
+.landing[data-theme="dark"] .landing-runway {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+.landing[data-theme="dark"] .landing-runway:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+}
+.landing[data-theme="dark"] .landing-runway-tag {
+  color: rgba(255, 255, 255, 0.55);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+.landing[data-theme="dark"] .landing-runway-title {
+  color: #fff;
+}
+.landing[data-theme="dark"] .landing-runway-body code {
+  background: rgba(255, 255, 255, 0.06);
+}
+.landing[data-theme="dark"] .landing-runway-cta {
+  color: #fff;
+  border-bottom-color: rgba(255, 255, 255, 0.6);
+}
+@media (max-width: 720px) {
+  .landing-runways-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* === Site footer (shared across landing, dashboard, docs, legal) === */
 .site-footer {
   border-top: 1px solid var(--border);
