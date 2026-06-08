@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { cookieAdapter } from "./cookie-storage.js";
+import { resolveStorage } from "./storage.js";
 
 function clearAllCookies(): void {
   for (const c of document.cookie.split(";")) {
@@ -54,9 +55,34 @@ describe("cookieAdapter", () => {
       globalThis.document = originalDoc;
     }
   });
-});
 
-import { resolveStorage } from "./storage.js";
+  it("auto-enables Secure when sameSite is 'none' (browsers drop SameSite=None without Secure)", () => {
+    // jsdom only persists Secure cookies on https origins, so we capture the
+    // raw Set-Cookie string via a document.cookie setter spy instead.
+    const written: string[] = [];
+    const descriptor = Object.getOwnPropertyDescriptor(Document.prototype, "cookie")!;
+    const originalSet = descriptor.set!;
+    Object.defineProperty(document, "cookie", {
+      ...descriptor,
+      set(value: string) {
+        written.push(value);
+        originalSet.call(this, value);
+      },
+      configurable: true,
+    });
+    try {
+      const a = cookieAdapter({ sameSite: "none", secure: false });
+      a.set("xyz");
+      // The raw Set-Cookie string written to document.cookie must contain
+      // "secure" even though the caller passed secure:false.
+      expect(written.some((s) => s.includes("secure"))).toBe(true);
+      // And the written value must include our JWT.
+      expect(written.some((s) => s.includes("xyz"))).toBe(true);
+    } finally {
+      Object.defineProperty(document, "cookie", { ...descriptor, configurable: true });
+    }
+  });
+});
 
 describe('resolveStorage("cookie")', () => {
   beforeEach(() => clearAllCookies());

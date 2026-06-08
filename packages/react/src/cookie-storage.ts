@@ -5,7 +5,13 @@ export type CookieOptions = {
   name?: string;
   /** Path scope. Default: "/". */
   path?: string;
-  /** SameSite policy. Default: "lax". */
+  /**
+   * SameSite policy. Default: "lax".
+   *
+   * Note: when set to "none", the Secure flag is automatically enforced
+   * (required by all modern browsers; non-secure SameSite=None cookies
+   * are silently dropped).
+   */
   sameSite?: "lax" | "strict" | "none";
   /**
    * Secure flag. Default: true when location.protocol === "https:", false otherwise.
@@ -80,11 +86,14 @@ export function cookieAdapter(options: CookieOptions = {}): TokenStorage {
   const sameSite = options.sameSite ?? DEFAULTS.sameSite;
   const maxAge = options.maxAge ?? DEFAULTS.maxAge;
   const secure = options.secure ?? isSecureByDefault();
+  // SameSite=None requires Secure (Chrome 80+, Safari 13+). Coerce silently
+  // instead of letting the browser drop the cookie with no error.
+  const effectiveSecure = sameSite === "none" ? true : secure;
   const domain = options.domain;
 
   return {
     get: () => readCookie(name),
-    set: (jwt) => writeCookie(name, jwt, { path, sameSite, maxAge, secure, domain }),
+    set: (jwt) => writeCookie(name, jwt, { path, sameSite, maxAge, secure: effectiveSecure, domain }),
     clear: () => deleteCookie(name, { path, domain }),
   };
 }
