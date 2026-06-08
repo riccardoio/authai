@@ -81,24 +81,19 @@ export function generateVerifyToken(): string {
  * pasting `https://example.com/` and a browser sending
  * `Origin: https://example.com` resolve to the same row.
  */
-export function normalizeOrigin(input: string): string | null {
-  if (!input) return null;
-  let url: URL;
+export function normalizeOrigin(raw: string): string {
+  if (!raw || raw === "null") return "";
   try {
-    url = new URL(input);
+    const url = new URL(raw);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return "";
+    // Origin must NOT carry a path, query, or fragment.
+    if (url.pathname !== "/" && url.pathname !== "") return "";
+    if (url.search || url.hash) return "";
+    // Construct origin: scheme://host[:port], no trailing slash.
+    return `${url.protocol}//${url.host}`.toLowerCase();
   } catch {
-    return null;
+    return "";
   }
-  if (url.protocol !== "http:" && url.protocol !== "https:") return null;
-  // Reject inputs that include a path beyond `/`, a query, or a fragment.
-  // A real origin is scheme + host + optional port, full stop.
-  if (url.pathname !== "/" && url.pathname !== "") return null;
-  if (url.search !== "") return null;
-  if (url.hash !== "") return null;
-  // `URL#origin` already lowercases the host and elides default ports
-  // (80 for http, 443 for https). That's exactly the shape browsers
-  // send in the Origin header.
-  return url.origin;
 }
 
 /**

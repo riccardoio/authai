@@ -100,7 +100,7 @@ export class CloudTenantResolver implements TenantResolver {
     // `Origin: https://example.com` (no trailing slash, no path) hit the
     // same row.
     const rawOrigin = c.req.header("origin");
-    const origin = rawOrigin ? normalizeOrigin(rawOrigin) : null;
+    const origin = rawOrigin ? normalizeOrigin(rawOrigin) : "";
     if (origin) {
       const app = await this.config.appStore.apps.getByOrigin(origin);
       if (!app || app.credentialType !== "secret") return null;

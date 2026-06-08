@@ -90,25 +90,25 @@ describe("normalizeOrigin", () => {
   });
 
   it("rejects URLs with a path beyond /", () => {
-    expect(normalizeOrigin("https://example.com/x")).toBe(null);
-    expect(normalizeOrigin("https://example.com/path/to/thing")).toBe(null);
+    expect(normalizeOrigin("https://example.com/x")).toBe("");
+    expect(normalizeOrigin("https://example.com/path/to/thing")).toBe("");
   });
 
   it("rejects URLs with a query or fragment", () => {
-    expect(normalizeOrigin("https://example.com/?x=1")).toBe(null);
-    expect(normalizeOrigin("https://example.com/#frag")).toBe(null);
+    expect(normalizeOrigin("https://example.com/?x=1")).toBe("");
+    expect(normalizeOrigin("https://example.com/#frag")).toBe("");
   });
 
   it("rejects non-http(s) schemes", () => {
-    expect(normalizeOrigin("ftp://example.com")).toBe(null);
-    expect(normalizeOrigin("javascript:alert(1)")).toBe(null);
-    expect(normalizeOrigin("file:///etc/passwd")).toBe(null);
+    expect(normalizeOrigin("ftp://example.com")).toBe("");
+    expect(normalizeOrigin("javascript:alert(1)")).toBe("");
+    expect(normalizeOrigin("file:///etc/passwd")).toBe("");
   });
 
   it("rejects malformed input", () => {
-    expect(normalizeOrigin("not a url")).toBe(null);
-    expect(normalizeOrigin("")).toBe(null);
-    expect(normalizeOrigin("//example.com")).toBe(null);
+    expect(normalizeOrigin("not a url")).toBe("");
+    expect(normalizeOrigin("")).toBe("");
+    expect(normalizeOrigin("//example.com")).toBe("");
   });
 
   it("produces the SAME value for a registration string and the browser Origin header", () => {
@@ -138,6 +138,37 @@ describe("generatePublishableKey", () => {
     const h2 = hashApiKey(key);
     expect(h1).toBe(h2);
     expect(h1).toMatch(/^[0-9a-f]{64}$/);
+  });
+});
+
+describe("normalizeOrigin — edge cases (Task 2.4)", () => {
+  it("returns empty string for the literal 'null'", () => {
+    expect(normalizeOrigin("null")).toBe("");
+  });
+
+  it("returns empty string for empty input", () => {
+    expect(normalizeOrigin("")).toBe("");
+  });
+
+  it("returns empty string for origin with a path", () => {
+    expect(normalizeOrigin("https://example.com/foo")).toBe("");
+  });
+
+  it("returns empty string for origin with a query string", () => {
+    expect(normalizeOrigin("https://example.com?q=1")).toBe("");
+  });
+
+  it("returns empty string for origin with a fragment", () => {
+    expect(normalizeOrigin("https://example.com#x")).toBe("");
+  });
+
+  it("returns empty string for malformed URL", () => {
+    expect(normalizeOrigin("not-a-url")).toBe("");
+  });
+
+  it("normalizes valid origin (scheme://host[:port], no trailing slash)", () => {
+    expect(normalizeOrigin("https://Example.com/")).toBe("https://example.com");
+    expect(normalizeOrigin("https://example.com:8443")).toBe("https://example.com:8443");
   });
 });
 

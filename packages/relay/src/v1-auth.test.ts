@@ -382,3 +382,30 @@ describe("/v1/* route-aware enforcement (Task 2.3)", () => {
     }
   });
 });
+
+describe("CORS preflight (Task 2.4)", () => {
+  it("allows x-authai-publishable-key in preflight Access-Control-Allow-Headers", async () => {
+    const app = buildAppWithResolver({
+      originator: "test",
+      identitySecret: Buffer.alloc(32),
+      appId: "app_1",
+      resolvedVia: "publishable",
+      credentialType: "publishable",
+      browserDirectEnabled: true,
+    });
+    const res = await app.fetch(
+      new Request("http://relay.test/v1/chat/completions", {
+        method: "OPTIONS",
+        headers: {
+          "origin": "https://x.lovable.app",
+          "access-control-request-method": "POST",
+          "access-control-request-headers": "x-authai-publishable-key, authorization, content-type",
+        },
+      }),
+    );
+    expect(res.status).toBeLessThan(400);
+    const allowHeaders = (res.headers.get("access-control-allow-headers") ?? "").toLowerCase();
+    expect(allowHeaders).toContain("x-authai-publishable-key");
+    expect(allowHeaders).toContain("authorization");
+  });
+});
