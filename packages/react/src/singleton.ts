@@ -196,8 +196,12 @@ export async function signInSingleton(provider?: ProviderId): Promise<void> {
       isSignedIn: true,
     };
     emit(store);
+    store.abort = null;
   } catch (err) {
-    if ((err as Error).name === "AbortError") return;
+    if ((err as Error).name === "AbortError") {
+      store.abort = null;
+      return;
+    }
     store.state = {
       ...store.state,
       pendingProvider: null,
@@ -206,6 +210,7 @@ export async function signInSingleton(provider?: ProviderId): Promise<void> {
       error: (err as Error).message,
     };
     emit(store);
+    store.abort = null;
   }
 }
 
@@ -237,6 +242,7 @@ export function cancelSingletonFlow(): void {
     error: null,
   };
   emit(store);
+  store.abort = null;
 }
 
 /** Test-only: wipe singleton state. Not exported from package index. */

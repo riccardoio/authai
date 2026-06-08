@@ -6,6 +6,7 @@ import {
   configureSingleton,
   signInSingleton,
   signOutSingleton,
+  cancelSingletonFlow,
 } from "./singleton.js";
 
 describe("singleton store", () => {
@@ -63,6 +64,45 @@ describe("singleton store", () => {
     const stash = (globalThis as any).__authai;
     expect(stash).toBeDefined();
     expect(stash.config.relayUrl).toBe("https://hmr");
+  });
+
+  it("signInSingleton() without provider and without config sets error state instead of throwing", async () => {
+    await expect(signInSingleton()).resolves.toBeUndefined();
+    const snap = getSingletonSnapshot();
+    expect(snap.phase).toBe("error");
+    expect(snap.error).toMatch(/relayUrl/);
+  });
+
+  it("cancelSingletonFlow from picker transitions to idle and clears pendingProvider", () => {
+    configureSingleton({ relayUrl: "https://r", appName: "T" });
+    void signInSingleton(); // moves to picker
+    expect(getSingletonSnapshot().phase).toBe("picker");
+    // No way to set pendingProvider without firing a real network call —
+    // we cover the picker→idle transition + verification null reset.
+    cancelSingletonFlow();
+    const snap = getSingletonSnapshot();
+    expect(snap.phase).toBe("idle");
+    expect(snap.pendingProvider).toBeNull();
+    expect(snap.verification).toBeNull();
+  });
+
+  it("cancelSingletonFlow from error clears the error field", async () => {
+    await signInSingleton(); // no config → error state
+    expect(getSingletonSnapshot().phase).toBe("error");
+    cancelSingletonFlow();
+    const snap = getSingletonSnapshot();
+    expect(snap.phase).toBe("idle");
+    expect(snap.error).toBeNull();
+  });
+
+  it("cancelSingletonFlow notifies subscribers", () => {
+    configureSingleton({ relayUrl: "https://r", appName: "T" });
+    void signInSingleton();
+    let count = 0;
+    const unsub = subscribeSingleton(() => { count++; });
+    cancelSingletonFlow();
+    expect(count).toBeGreaterThan(0);
+    unsub();
   });
 });
 
