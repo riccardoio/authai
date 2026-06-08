@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ulid } from "ulid";
-import { getSession } from "@/lib/session";
+import { getSession, SESSION_COOKIE_NAME } from "@/lib/session";
 import { getStore } from "@/lib/db";
 import { generateApiKey, hashApiKey, normalizeOrigin, classifyOriginTier } from "@authai/cloud";
 import { CLI_BRIDGE_COOKIE, verifyBridge } from "@/lib/cli-bridge";
 import { setOneTimeKey } from "@/lib/one-time-key";
 import { cookies } from "next/headers";
+import { issueCsrfToken } from "@/lib/csrf";
 import { AuthedShell } from "../../authed-shell";
 import { PublishableConfirmForm } from "./publishable-form";
 
@@ -44,6 +45,8 @@ export default async function NewAppPage({
     }
     const presetName = params.name?.trim() || new URL(presetOrigin).hostname;
     const tier = classifyOriginTier(presetOrigin);
+    const sessionCookie = (await cookies()).get(SESSION_COOKIE_NAME)?.value ?? "";
+    const csrfToken = await issueCsrfToken({ sessionCookieValue: sessionCookie, action: "apps.create.publishable" });
     return (
       <AuthedShell githubLogin={session.githubLogin} breadcrumb="New publishable app">
         <PublishableConfirmForm
@@ -51,6 +54,7 @@ export default async function NewAppPage({
           origin={presetOrigin}
           name={presetName}
           tier={tier}
+          csrfToken={csrfToken}
         />
       </AuthedShell>
     );

@@ -9,12 +9,21 @@ import {
   removeOriginAction,
 } from "./origins-actions";
 
+type CsrfTokens = {
+  add: string;
+  disable: string;
+  enable: string;
+  remove: string;
+};
+
 export function OriginsSection({
   appId,
   origins,
+  csrfTokens,
 }: {
   appId: string;
   origins: OriginRow[];
+  csrfTokens: CsrfTokens;
 }) {
   const [showAdd, setShowAdd] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +38,15 @@ export function OriginsSection({
 
       <ul style={{ listStyle: "none", padding: 0 }}>
         {origins.map((o) => (
-          <OriginRowItem key={o.id} appId={appId} origin={o} onError={setError} />
+          <OriginRowItem
+            key={o.id}
+            appId={appId}
+            origin={o}
+            onError={setError}
+            csrfDisable={csrfTokens.disable}
+            csrfEnable={csrfTokens.enable}
+            csrfRemove={csrfTokens.remove}
+          />
         ))}
       </ul>
 
@@ -38,6 +55,7 @@ export function OriginsSection({
       ) : (
         <AddOriginForm
           appId={appId}
+          csrfAdd={csrfTokens.add}
           onClose={() => setShowAdd(false)}
           onError={setError}
         />
@@ -53,10 +71,16 @@ function OriginRowItem({
   appId,
   origin,
   onError,
+  csrfDisable,
+  csrfEnable,
+  csrfRemove,
 }: {
   appId: string;
   origin: OriginRow;
   onError: (msg: string | null) => void;
+  csrfDisable: string;
+  csrfEnable: string;
+  csrfRemove: string;
 }) {
   const [pending, startTransition] = useTransition();
   return (
@@ -98,7 +122,7 @@ function OriginRowItem({
           onClick={() =>
             startTransition(async () => {
               onError(null);
-              const r = await disableOriginAction(appId, origin.id);
+              const r = await disableOriginAction(appId, origin.id, csrfDisable);
               if (r.error) onError(r.error);
               else location.reload();
             })
@@ -112,7 +136,7 @@ function OriginRowItem({
           onClick={() =>
             startTransition(async () => {
               onError(null);
-              const r = await enableOriginAction(appId, origin.id);
+              const r = await enableOriginAction(appId, origin.id, csrfEnable);
               if (r.error) onError(r.error);
               else location.reload();
             })
@@ -121,7 +145,7 @@ function OriginRowItem({
           Enable
         </button>
       )}
-      <RemoveOriginButton appId={appId} origin={origin} onError={onError} />
+      <RemoveOriginButton appId={appId} origin={origin} onError={onError} csrfRemove={csrfRemove} />
     </li>
   );
 }
@@ -130,10 +154,12 @@ function RemoveOriginButton({
   appId,
   origin,
   onError,
+  csrfRemove,
 }: {
   appId: string;
   origin: OriginRow;
   onError: (msg: string | null) => void;
+  csrfRemove: string;
 }) {
   const [confirming, setConfirming] = useState(false);
   const [typed, setTyped] = useState("");
@@ -166,7 +192,7 @@ function RemoveOriginButton({
         onClick={() =>
           startTransition(async () => {
             onError(null);
-            const r = await removeOriginAction(appId, origin.id);
+            const r = await removeOriginAction(appId, origin.id, csrfRemove);
             if (r.error) onError(r.error);
             else location.reload();
           })
@@ -188,10 +214,12 @@ function RemoveOriginButton({
 
 function AddOriginForm({
   appId,
+  csrfAdd,
   onClose,
   onError,
 }: {
   appId: string;
+  csrfAdd: string;
   onClose: () => void;
   onError: (msg: string | null) => void;
 }) {
@@ -248,7 +276,7 @@ function AddOriginForm({
           onClick={() =>
             startTransition(async () => {
               onError(null);
-              const r = await addOriginAction(appId, origin);
+              const r = await addOriginAction(appId, origin, csrfAdd);
               if (r.error) onError(r.error);
               else location.reload();
             })

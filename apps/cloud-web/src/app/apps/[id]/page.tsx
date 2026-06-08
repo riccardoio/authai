@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ulid } from "ulid";
-import { getSession } from "@/lib/session";
+import { getSession, SESSION_COOKIE_NAME } from "@/lib/session";
 import { getFullStore, getStore } from "@/lib/db";
+import { cookies } from "next/headers";
+import { issueCsrfToken } from "@/lib/csrf";
 import { AuthedShell } from "../../authed-shell";
 import { OriginsSection } from "./origins-section";
 
@@ -52,6 +54,14 @@ export default async function AppDetailPage({
       ? await fullStore.origins.listForApp(app.id)
       : [];
 
+  const sessionCookie = (await cookies()).get(SESSION_COOKIE_NAME)?.value ?? "";
+  const csrfTokens = {
+    add: await issueCsrfToken({ sessionCookieValue: sessionCookie, action: "origins.add" }),
+    disable: await issueCsrfToken({ sessionCookieValue: sessionCookie, action: "origins.disable" }),
+    enable: await issueCsrfToken({ sessionCookieValue: sessionCookie, action: "origins.enable" }),
+    remove: await issueCsrfToken({ sessionCookieValue: sessionCookie, action: "origins.remove" }),
+  };
+
   return (
     <AuthedShell githubLogin={session.githubLogin} breadcrumb={app.name}>
       <h1>{app.name}</h1>
@@ -84,7 +94,7 @@ export default async function AppDetailPage({
       </div>
 
       {app.credentialType === "publishable" && (
-        <OriginsSection appId={app.id} origins={origins} />
+        <OriginsSection appId={app.id} origins={origins} csrfTokens={csrfTokens} />
       )}
 
       <h2>Recent events</h2>

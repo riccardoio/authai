@@ -1,9 +1,12 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/session";
+import { cookies } from "next/headers";
+import { getSession, SESSION_COOKIE_NAME } from "@/lib/session";
 import { getFullStore } from "@/lib/db";
 import { classifyOriginTier, normalizeOrigin } from "@authai/cloud";
+import { verifyCsrf } from "@/lib/csrf";
+import { writeAudit } from "@/lib/audit";
 
 const BLOCKED_HOSTS = ["authai.io", "relay.authai.io", "www.authai.io"];
 
@@ -17,12 +20,22 @@ async function assertOwner(appId: string): Promise<{ githubUserId: string }> {
   return { githubUserId: session.githubUserId };
 }
 
+async function checkCsrf(token: string, action: string): Promise<boolean> {
+  const sc = (await cookies()).get(SESSION_COOKIE_NAME)?.value ?? "";
+  return verifyCsrf({ token, sessionCookieValue: sc, action });
+}
+
 export async function addOriginAction(
   appId: string,
   originRaw: string,
+  csrf: string,
 ): Promise<{ error?: string }> {
-  await assertOwner(appId);
-  // TODO(phase7): await verifyCsrf("origins.add");
+  const { githubUserId } = await assertOwner(appId);
+
+  if (!(await checkCsrf(csrf, "origins.add"))) {
+    return { error: "Invalid CSRF token. Refresh and try again." };
+  }
+
   const store = await getFullStore();
 
   let origin: string;
@@ -53,37 +66,76 @@ export async function addOriginAction(
     }
     throw err;
   }
+
+  await writeAudit({
+    appId,
+    actorGhId: githubUserId,
+    eventType: "origins.add",
+    payload: { origin, tier },
+  });
+
   return {};
 }
 
 export async function disableOriginAction(
   appId: string,
   originId: string,
+  csrf: string,
 ): Promise<{ error?: string }> {
-  await assertOwner(appId);
-  // TODO(phase7): await verifyCsrf("origins.disable");
+  const { githubUserId } = await assertOwner(appId);
+
+  if (!(await checkCsrf(csrf, "origins.disable"))) {
+    return { error: "Invalid CSRF token. Refresh and try again." };
+  }
+
   const store = await getFullStore();
   await store.origins.setStatus(originId, "disabled");
+
+  await writeAudit({
+    appId,
+    actorGhId: githubUserId,
+    eventType: "origins.disable",
+    payload: { originId },
+  });
+
   return {};
 }
 
 export async function enableOriginAction(
   appId: string,
   originId: string,
+  csrf: string,
 ): Promise<{ error?: string }> {
-  await assertOwner(appId);
-  // TODO(phase7): await verifyCsrf("origins.enable");
+  const { githubUserId } = await assertOwner(appId);
+
+  if (!(await checkCsrf(csrf, "origins.enable"))) {
+    return { error: "Invalid CSRF token. Refresh and try again." };
+  }
+
   const store = await getFullStore();
   await store.origins.setStatus(originId, "active");
+
+  await writeAudit({
+    appId,
+    actorGhId: githubUserId,
+    eventType: "origins.enable",
+    payload: { originId },
+  });
+
   return {};
 }
 
 export async function removeOriginAction(
   appId: string,
   originId: string,
+  csrf: string,
 ): Promise<{ error?: string }> {
-  await assertOwner(appId);
-  // TODO(phase7): await verifyCsrf("origins.remove");
+  const { githubUserId } = await assertOwner(appId);
+
+  if (!(await checkCsrf(csrf, "origins.remove"))) {
+    return { error: "Invalid CSRF token. Refresh and try again." };
+  }
+
   const store = await getFullStore();
   const origins = await store.origins.listForApp(appId);
   if (origins.length <= 1) {
@@ -93,5 +145,13 @@ export async function removeOriginAction(
     };
   }
   await store.origins.remove(originId);
+
+  await writeAudit({
+    appId,
+    actorGhId: githubUserId,
+    eventType: "origins.remove",
+    payload: { originId },
+  });
+
   return {};
 }

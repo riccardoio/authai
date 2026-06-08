@@ -81,3 +81,4 @@ export async function clearSessionCookie(): Promise<void> {
 }
 
 export { COOKIE_NAME as SESSION_COOKIE };
+export const SESSION_COOKIE_NAME = COOKIE_NAME;

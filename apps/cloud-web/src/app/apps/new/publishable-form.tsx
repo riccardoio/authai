@@ -8,11 +8,13 @@ export function PublishableConfirmForm({
   origin,
   name,
   tier,
+  csrfToken,
 }: {
   sessionEmail: string;
   origin: string;
   name: string;
   tier: "localhost" | "preview" | "production";
+  csrfToken: string;
 }) {
   const [editedOrigin, setEditedOrigin] = useState(origin);
   const [editedName, setEditedName] = useState(name);
@@ -109,6 +111,7 @@ export function PublishableConfirmForm({
               const result = await createPublishableAppAction({
                 origin: editedOrigin,
                 name: editedName,
+                csrf: csrfToken,
               });
               if (result.error) {
                 setError(result.error);

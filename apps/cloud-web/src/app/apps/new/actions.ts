@@ -2,7 +2,8 @@
 
 import { ulid } from "ulid";
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/session";
+import { cookies } from "next/headers";
+import { getSession, SESSION_COOKIE_NAME } from "@/lib/session";
 import { getFullStore } from "@/lib/db";
 import {
   classifyOriginTier,
@@ -10,16 +11,28 @@ import {
   hashApiKey,
   generatePublishableKey,
 } from "@authai/cloud";
+import { verifyCsrf } from "@/lib/csrf";
+import { writeAudit } from "@/lib/audit";
 
 const BLOCKED_HOSTS = ["authai.io", "relay.authai.io", "www.authai.io"];
+
+async function checkCsrf(token: string, action: string): Promise<boolean> {
+  const sc = (await cookies()).get(SESSION_COOKIE_NAME)?.value ?? "";
+  return verifyCsrf({ token, sessionCookieValue: sc, action });
+}
 
 export async function createPublishableAppAction(input: {
   origin: string;
   name: string;
+  csrf: string;
 }): Promise<{ redirect?: string; error?: string }> {
   const session = await getSession();
   if (!session) {
     redirect("/sign-in?return=/apps/new");
+  }
+
+  if (!(await checkCsrf(input.csrf, "apps.create.publishable"))) {
+    return { error: "Invalid CSRF token. Refresh and try again." };
   }
 
   // Validate + normalize origin.
@@ -93,6 +106,13 @@ export async function createPublishableAppAction(input: {
     }
     throw err;
   }
+
+  await writeAudit({
+    appId,
+    actorGhId: session.githubUserId,
+    eventType: "apps.create",
+    payload: { credentialType: "publishable", origin: normalized, tier },
+  });
 
   return {
     redirect: `/apps/${appId}/created?type=publishable&pk=${encodeURIComponent(pkPlain)}`,
