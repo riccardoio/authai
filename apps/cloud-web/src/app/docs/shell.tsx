@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ThemeRoot, SunIcon, MoonIcon } from "../theme-toggle";
+import { SiteFooter } from "../site-footer";
 
 const GITHUB_URL = "https://github.com/riccardoio/authai";
 
@@ -95,6 +96,7 @@ export function DocsShell({
 
             <main className="docs-content">{children}</main>
           </div>
+          <SiteFooter />
         </div>
       )}
     </ThemeRoot>

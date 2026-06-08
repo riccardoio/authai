@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ThemeRoot, SunIcon, MoonIcon } from "./theme-toggle";
+import { SiteFooter } from "./site-footer";
 
 /**
  * Shared chrome for authenticated pages (/dashboard, /apps/*). Same
@@ -57,6 +58,7 @@ export function AuthedShell({
             </nav>
           </header>
           <main className="authed-content">{children}</main>
+          <SiteFooter />
         </div>
       )}
     </ThemeRoot>
