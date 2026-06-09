@@ -27,7 +27,9 @@ export function AuthedShell({
             <Link href="/" className="authed-brand" style={{ textDecoration: "none" }}>
               <span className="landing-brand-mark">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <path d="M12 2 L22 20 L2 20 Z" />
+                  <rect x="0" y="0" width="10" height="10" rx="2" />
+                  <rect x="14" y="14" width="10" height="10" rx="2" />
+                  <rect x="7" y="7" width="10" height="10" rx="2" fill="none" stroke="currentColor" strokeWidth="1.5" />
                 </svg>
               </span>
               AuthAI

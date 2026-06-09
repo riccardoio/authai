@@ -35,3 +35,4 @@ docs/superpowers/
 
 # Git worktrees (isolated branches created via the worktree workflow)
 .worktrees/
+.gstack/

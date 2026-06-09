@@ -1,12 +1,31 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
+const SITE_URL = "https://authai.io";
+const SITE_TITLE = "AuthAI — auth for AI builders";
+const SITE_DESCRIPTION =
+  "Build AI products without the AI bill. Your users sign in with their AI subscription; every model call lands on their plan. Across ChatGPT, Grok, and Copilot. Free, open-source, self-hostable.";
+
 export const metadata: Metadata = {
-  title: "AuthAI — auth for AI builders",
-  description:
-    "Build AI products without the AI bill. Your users sign in with their AI subscription; every model call lands on their plan. Across ChatGPT, Grok, and Copilot. Free, open-source, self-hostable.",
+  metadataBase: new URL(SITE_URL),
+  title: SITE_TITLE,
+  description: SITE_DESCRIPTION,
   alternates: {
+    canonical: "/",
     types: { "text/markdown": "/llms.txt" },
+  },
+  openGraph: {
+    type: "website",
+    url: SITE_URL,
+    siteName: "AuthAI",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
   },
 };
 
