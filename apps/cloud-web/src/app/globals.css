@@ -1939,8 +1939,8 @@ a { color: inherit; }
   align-items: center;
   gap: 10px;
   padding: 10px 18px;
-  background: rgba(29, 77, 255, 0.06);
-  border: 1px solid rgba(29, 77, 255, 0.18);
+  background: rgba(29, 77, 255, 0.05);
+  border: 1px solid rgba(29, 77, 255, 0.16);
   border-radius: 999px;
   color: var(--text-body);
   font-size: 13.5px;
@@ -1966,9 +1966,8 @@ a { color: inherit; }
   font-weight: 500;
 }
 .landing-demo-link:hover {
-  background: rgba(29, 77, 255, 0.1);
-  border-color: rgba(29, 77, 255, 0.32);
-  transform: translateY(-1px);
+  background: rgba(29, 77, 255, 0.07);
+  border-color: rgba(29, 77, 255, 0.22);
 }
 .landing-demo-link:hover svg:last-child {
   transform: translateX(2px);
@@ -1982,8 +1981,8 @@ a { color: inherit; }
   color: #fff;
 }
 .landing[data-theme="dark"] .landing-demo-link:hover {
-  background: rgba(90, 166, 255, 0.14);
-  border-color: rgba(90, 166, 255, 0.36);
+  background: rgba(90, 166, 255, 0.11);
+  border-color: rgba(90, 166, 255, 0.26);
 }
 
 /* === Landing trust band (standalone micro-section between hero and flow) === */
