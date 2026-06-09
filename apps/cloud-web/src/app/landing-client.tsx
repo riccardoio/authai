@@ -151,15 +151,13 @@ export function LandingClient({ session }: { session: SessionShape }) {
                 href="/docs/lovable"
                 aria-label="Lovable integration guide"
               >
-                <svg
-                  width="22"
-                  height="22"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  aria-hidden="true"
-                >
-                  <path d="M12 21s-7-4.5-9-9c-1.5-3.5 1-7 4-7 2 0 3.5 1 5 3 1.5-2 3-3 5-3 3 0 5.5 3.5 4 7-2 4.5-9 9-9 9z" />
-                </svg>
+                <img
+                  src="/brands/lovable.svg"
+                  alt=""
+                  width={22}
+                  height={22}
+                  className="landing-platform-mark"
+                />
                 <span>Lovable</span>
               </a>
               <a
@@ -172,11 +170,12 @@ export function LandingClient({ session }: { session: SessionShape }) {
                 <svg
                   width="22"
                   height="22"
-                  viewBox="0 0 24 24"
+                  viewBox="0 0 76 65"
                   fill="currentColor"
+                  className="landing-platform-mark"
                   aria-hidden="true"
                 >
-                  <path d="M12 2 L22 20 L2 20 Z" />
+                  <path d="M37.59.25l36.95 64H.64z" />
                 </svg>
                 <span>v0</span>
               </a>
@@ -187,15 +186,13 @@ export function LandingClient({ session }: { session: SessionShape }) {
                 rel="noreferrer"
                 aria-label="Bolt.new by StackBlitz"
               >
-                <svg
-                  width="22"
-                  height="22"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  aria-hidden="true"
-                >
-                  <path d="M13 2 L4 14 H11 L10 22 L20 10 H13 Z" />
-                </svg>
+                <img
+                  src="/brands/bolt.svg"
+                  alt=""
+                  width={22}
+                  height={22}
+                  className="landing-platform-mark"
+                />
                 <span>Bolt</span>
               </a>
             </div>
