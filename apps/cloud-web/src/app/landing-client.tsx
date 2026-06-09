@@ -40,8 +40,8 @@ export function LandingClient({ session }: { session: SessionShape }) {
           >
             <span className="landing-announce-dot" aria-hidden="true" />
             <span className="landing-announce-text">
-              <strong>Liked AuthAI?</strong> The next project is more ambitious.
-              Get in touch
+              <strong>Enjoying AuthAI?</strong> Something more ambitious is in
+              the works — get in touch
             </span>
             <svg
               width="12"
