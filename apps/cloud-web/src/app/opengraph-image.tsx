@@ -9,6 +9,13 @@ const SUBTLE = "#737373";
 const ACCENT = "#1d4dff";
 const BG = "#ffffff";
 
+/**
+ * Aurora + grid backdrop mirroring the landing page's hero
+ * (.landing::before + .landing::after in globals.css). Satori doesn't
+ * support filter: blur, so the gradients have wider falloffs to fake
+ * the same softness. A bottom-up white wash fades the grid + aurora
+ * into the lower half so the headline reads clean.
+ */
 export default async function OpengraphImage() {
   return new ImageResponse(
     (
@@ -18,13 +25,57 @@ export default async function OpengraphImage() {
           height: "100%",
           background: BG,
           display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-          padding: "72px 88px",
+          position: "relative",
           fontFamily: "sans-serif",
           color: INK,
+          overflow: "hidden",
         }}
       >
+        {/* Aurora — two soft radial blobs in the upper third */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            backgroundImage:
+              "radial-gradient(ellipse 70% 55% at 22% 18%, rgba(57, 255, 20, 0.30), transparent 65%), " +
+              "radial-gradient(ellipse 60% 50% at 78% 28%, rgba(0, 255, 136, 0.24), transparent 70%)",
+          }}
+        />
+        {/* Grid overlay — 56px cell, faint ink */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            backgroundImage:
+              "linear-gradient(to right, rgba(0, 0, 0, 0.045) 1px, transparent 1px), " +
+              "linear-gradient(to bottom, rgba(0, 0, 0, 0.045) 1px, transparent 1px)",
+            backgroundSize: "56px 56px",
+          }}
+        />
+        {/* Bottom wash — fades aurora + grid out toward the footer line
+            so the headline reads on near-white */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            backgroundImage:
+              "linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0) 35%, rgba(255,255,255,0.85) 80%, rgba(255,255,255,1) 100%)",
+          }}
+        />
+        <div
+          style={{
+            position: "relative",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            width: "100%",
+            height: "100%",
+            padding: "72px 88px",
+          }}
+        >
         <div style={{ display: "flex", alignItems: "center", gap: 28 }}>
           <div style={{ position: "relative", display: "flex", width: 96, height: 96 }}>
             <div
@@ -99,6 +150,7 @@ export default async function OpengraphImage() {
           <span style={{ fontSize: 26, color: ACCENT, fontWeight: 500, display: "flex" }}>
             Open source · Self-hostable
           </span>
+        </div>
         </div>
       </div>
     ),
