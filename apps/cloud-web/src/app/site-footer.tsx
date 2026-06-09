@@ -57,6 +57,9 @@ export function SiteFooter() {
               <Link href="/docs/introduction">Docs</Link>
             </li>
             <li>
+              <Link href="/docs/lovable">Lovable</Link>
+            </li>
+            <li>
               <Link href="/docs/security">Security</Link>
             </li>
           </ul>
