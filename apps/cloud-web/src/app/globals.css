@@ -30,8 +30,8 @@
      use --section-py-minor so they read as a tight group between majors. */
   --section-max-w: 1080px;
   --section-px: 28px;
-  --section-py-major: 64px;
-  --section-py-minor: 20px;
+  --section-py-major: 120px;
+  --section-py-minor: 32px;
 }
 
 * { box-sizing: border-box; }
@@ -282,13 +282,24 @@ a { color: inherit; }
 .landing[data-theme="dark"] {
   background: #0a0a0a;
   color: #ededed;
+  /* Override tokens so child elements that consume var(--bg) /
+     var(--surface-muted) (incl. the SiteFooter) inherit dark values. */
+  --bg: #0a0a0a;
+  --surface: #111111;
   --surface-muted: rgba(255, 255, 255, 0.03);
+  --border: rgba(255, 255, 255, 0.10);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --text-primary: #fafafa;
+  --text-body: rgba(255, 255, 255, 0.78);
+  --text-muted: rgba(255, 255, 255, 0.62);
+  --text-subtle: rgba(255, 255, 255, 0.48);
+  --text-faint: rgba(255, 255, 255, 0.36);
 }
 .landing[data-theme="dark"]::before {
   background:
-    radial-gradient(circle at 28% 18%, rgba(0, 255, 136, 0.55), transparent 38%),
-    radial-gradient(circle at 72% 25%, rgba(0, 255, 136, 0.42), transparent 42%);
-  filter: blur(36px);
+    radial-gradient(circle at 28% 14%, rgba(0, 255, 136, 0.22), transparent 45%),
+    radial-gradient(circle at 72% 22%, rgba(0, 255, 136, 0.16), transparent 50%);
+  filter: blur(48px);
   mix-blend-mode: screen;
 }
 .landing[data-theme="dark"] .landing-brand,
@@ -1992,12 +2003,12 @@ a { color: inherit; }
 .landing-platform {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   color: var(--text-muted);
   text-decoration: none;
-  font-size: 17px;
+  font-size: 20px;
   font-weight: 500;
-  letter-spacing: -0.2px;
+  letter-spacing: -0.3px;
   transition: color var(--dur-micro) var(--ease-standard);
 }
 .landing-platform-mark {
@@ -2043,8 +2054,14 @@ a { color: inherit; }
   content: "";
   position: absolute;
   inset: 0 calc(50% - 50vw);
-  background: var(--surface-muted);
+  background: #0a0a0a;
   z-index: -1;
+}
+/* Dark mode: page bg is already #0a0a0a, so the moat-band needs to LIFT,
+   not go deeper. Use a stronger lift than --surface-muted so security
+   remains the visually distinct "stop and read" moment. */
+.landing[data-theme="dark"] .landing-security::before {
+  background: #1c1c1c;
 }
 .landing-security-inner {
   max-width: 640px;
@@ -2060,20 +2077,20 @@ a { color: inherit; }
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.2;
-  color: var(--text-primary);
+  color: #fafafa;
   display: inline-flex;
   align-items: center;
   gap: 12px;
 }
 .landing-security-headline svg {
-  color: var(--text-subtle);
+  color: rgba(255, 255, 255, 0.55);
   flex-shrink: 0;
 }
 .landing-security-sub {
   margin: 0;
   font-size: 15px;
   line-height: 1.6;
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.65);
 }
 .landing-security-link {
   display: inline-flex;
@@ -2082,15 +2099,12 @@ a { color: inherit; }
   margin-top: 4px;
   font-size: 14px;
   font-weight: 500;
-  color: var(--accent);
+  color: #5aa6ff;
   text-decoration: none;
   transition: gap var(--dur-micro) var(--ease-standard);
 }
 .landing-security-link:hover {
   gap: 10px;
-}
-.landing[data-theme="dark"] .landing-security-link {
-  color: #5aa6ff;
 }
 @media (max-width: 640px) {
   .landing-security-headline {
@@ -2160,8 +2174,19 @@ a { color: inherit; }
   border-radius: 4px;
 }
 .landing[data-theme="dark"] .landing-why-icon {
-  background: rgba(90, 166, 255, 0.10);
-  color: #5aa6ff;
+  background: rgba(90, 166, 255, 0.16);
+  color: #7fb8ff;
+}
+.landing[data-theme="dark"] .landing-why-heading,
+.landing[data-theme="dark"] .landing-why-card-title {
+  color: #fafafa;
+}
+.landing[data-theme="dark"] .landing-why-card-body {
+  color: rgba(255, 255, 255, 0.62);
+}
+.landing[data-theme="dark"] .landing-why-card-body code {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.85);
 }
 @media (max-width: 760px) {
   .landing-why-grid {
@@ -2184,6 +2209,11 @@ a { color: inherit; }
   inset: 0 calc(50% - 50vw);
   background: var(--surface-muted);
   z-index: -1;
+}
+/* Dark mode: --surface-muted at 0.03 alpha disappears against #0a0a0a.
+   Use an explicit lift that mirrors light-mode's visible band rhythm. */
+.landing[data-theme="dark"] .landing-runways::before {
+  background: #131313;
 }
 .landing-runways-heading {
   font-size: 22px;
@@ -2282,8 +2312,14 @@ a { color: inherit; }
   color: rgba(255, 255, 255, 0.55);
   border-color: rgba(255, 255, 255, 0.14);
 }
+.landing[data-theme="dark"] .landing-runways-heading {
+  color: #fafafa;
+}
 .landing[data-theme="dark"] .landing-runway-title {
   color: #fff;
+}
+.landing[data-theme="dark"] .landing-runway-body {
+  color: rgba(255, 255, 255, 0.65);
 }
 .landing[data-theme="dark"] .landing-runway-body code {
   background: rgba(255, 255, 255, 0.06);

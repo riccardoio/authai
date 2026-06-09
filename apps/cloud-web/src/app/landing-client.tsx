@@ -188,8 +188,8 @@ export function LandingClient({ session }: { session: SessionShape }) {
                 <img
                   src="/brands/lovable.svg"
                   alt=""
-                  width={22}
-                  height={22}
+                  width={32}
+                  height={32}
                   className="landing-platform-mark"
                 />
                 <span>Lovable</span>
@@ -202,8 +202,8 @@ export function LandingClient({ session }: { session: SessionShape }) {
                 aria-label="v0 by Vercel"
               >
                 <svg
-                  width="22"
-                  height="22"
+                  width="32"
+                  height="32"
                   viewBox="0 0 76 65"
                   fill="currentColor"
                   className="landing-platform-mark"
@@ -223,8 +223,8 @@ export function LandingClient({ session }: { session: SessionShape }) {
                 <img
                   src="/brands/bolt.svg"
                   alt=""
-                  width={22}
-                  height={22}
+                  width={32}
+                  height={32}
                   className="landing-platform-mark"
                 />
                 <span>Bolt</span>
@@ -239,8 +239,8 @@ export function LandingClient({ session }: { session: SessionShape }) {
                 <img
                   src="/brands/cursor.svg"
                   alt=""
-                  width={22}
-                  height={22}
+                  width={32}
+                  height={32}
                   className="landing-platform-mark"
                 />
                 <span>Cursor</span>
@@ -255,8 +255,8 @@ export function LandingClient({ session }: { session: SessionShape }) {
                 <img
                   src="/brands/claude.svg"
                   alt=""
-                  width={22}
-                  height={22}
+                  width={32}
+                  height={32}
                   className="landing-platform-mark"
                 />
                 <span>Claude Code</span>
