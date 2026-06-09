@@ -151,8 +151,8 @@ packages/
 └── web/                  framework-agnostic equivalents (deferred — react is enough for v2)
 apps/
 ├── relay-server/         boots the relay
-├── example-react/        frontend demo
-└── example-backend/      tiny Node backend showing the openai-SDK pattern
+├── demo-react/        frontend demo
+└── demo-backend/      tiny Node backend showing the openai-SDK pattern
 ```
 
 ### Env contract
@@ -230,7 +230,7 @@ v1 used the working name `chatgpt-connect` and `@ai-connect/*` packages. v2 is r
 - v1 `packages/sdk` is deleted. `@authai-io/react` is a fresh implementation that exposes only the JWT.
 - Relay endpoints: `/auth/poll/:id` returns `{ jwt }` not `{ tokens }`; new `/auth/revoke`; new `/v1/*` OpenAI-compatible routes.
 - Relay gains storage layer, AES-GCM encrypt/decrypt, JWT issuance.
-- Example app: removes the bespoke `<Chat />` UI from v1 and demonstrates the new pattern — frontend signs in, hands the JWT to `example-backend/` which uses `openai` directly against the relay.
+- Example app: removes the bespoke `<Chat />` UI from v1 and demonstrates the new pattern — frontend signs in, hands the JWT to `demo-backend/` which uses `openai` directly against the relay.
 
 ## Out of scope for v2
 
@@ -243,7 +243,7 @@ v1 used the working name `chatgpt-connect` and `@ai-connect/*` packages. v2 is r
 
 1. Generate a JWT_SECRET, boot the relay with SQLite — `/` returns ok.
 2. Sign in via the React example — `/auth/poll/:id` returns a JWT, not raw tokens. Decode and confirm `rid`, `k`, `exp`.
-3. From `example-backend/`: `new OpenAI({ apiKey: jwt, baseURL: relay/v1 })`, call `openai.chat.completions.create({ model: "gpt-5.4", messages, stream: true })`. Verify the stream arrives in Chat Completions format.
+3. From `demo-backend/`: `new OpenAI({ apiKey: jwt, baseURL: relay/v1 })`, call `openai.chat.completions.create({ model: "gpt-5.4", messages, stream: true })`. Verify the stream arrives in Chat Completions format.
 4. Call an unsupported endpoint (e.g. `openai.embeddings.create`) — confirm structured 400 error.
 5. Inspect the SQLite DB: blobs are opaque bytes, no plaintext OAuth tokens anywhere.
 6. Sign with a different JWT_SECRET and retry the chat call — expect 401.
@@ -263,8 +263,8 @@ Created or rewritten:
 - `packages/relay-store-sqlite/` — new package.
 - `packages/react/` — new package.
 - `apps/relay-server/` — new app.
-- `apps/example-react/` — rewritten to use `@authai-io/react`.
-- `apps/example-backend/` — new tiny Node demo using `openai` against the relay.
+- `apps/demo-react/` — rewritten to use `@authai-io/react`.
+- `apps/demo-backend/` — new tiny Node demo using `openai` against the relay.
 
 Deleted:
 

@@ -143,7 +143,7 @@ export default async function Layout({ children }) {
 }
 ```
 
-`initialJwt` is the SSR hand-off: pass a JWT from anywhere (cookie, NextAuth session, custom header) and the first render is correctly signed-in. `storage="cookie"` mirrors the JWT to a cookie so server components can read it. Full demo in `apps/example-nextjs`.
+`initialJwt` is the SSR hand-off: pass a JWT from anywhere (cookie, NextAuth session, custom header) and the first render is correctly signed-in. `storage="cookie"` mirrors the JWT to a cookie so server components can read it. Full demo in `apps/demo-nextjs`.
 
 The SDK only exposes the JWT. There's no `client.chat()` method, no wrapper around `openai` — model calls happen in your backend, using the package you already use.
 
@@ -228,17 +228,17 @@ apps/
 ├── relay-server         executable that boots the community (self-hosted) relay
 ├── cloud-relay-server   executable that boots the cloud edition's relay (Hetzner+Dokku)
 ├── cloud-web            Next.js webapp for AuthAI Cloud (Hetzner+Dokku) — landing, sign-in, dashboard, docs viewer, CLI bridge
-├── example-backend      tiny Node demo using the openai SDK against the relay
-├── example-react        Vite + React SPA demo (singleton path)
-└── example-nextjs       Next.js App Router demo (provider + SSR path)
+├── demo-backend      tiny Node demo using the openai SDK against the relay
+├── demo-react        Vite + React SPA demo (singleton path)
+└── demo-nextjs       Next.js App Router demo (provider + SSR path)
 ```
 
 ## Run the demo end-to-end
 
 ```bash
 pnpm dev:relay      # → :3000
-pnpm dev:backend    # → :4000  (uses the openai npm package against the relay)
-pnpm dev:example    # → :5173  (Vite + React)
+pnpm dev:demo:backend    # → :4000  (uses the openai npm package against the relay)
+pnpm dev:demo    # → :5173  (Vite + React)
 ```
 
 Open http://localhost:5173, click **Sign in with ChatGPT**, authorize at `auth.openai.com/codex/device`, send a message.

@@ -4,7 +4,7 @@ import { useState } from "react";
 
 /**
  * The "frontend.jsx / backend.js" tabbed code panel from the landing.
- * Ported verbatim from apps/example-react/src/App.tsx — the syntax
+ * Ported verbatim from apps/demo-react/src/App.tsx — the syntax
  * highlighting is done via inline <span> classes (kw/var/str/fn/com/punc)
  * which the global stylesheet styles. No marked/highlight.js needed for
  * these two snippets; they're hand-tokenized to match the design exactly.

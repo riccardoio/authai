@@ -10,7 +10,7 @@ type Section = { id: string; title: string; subtitle: string };
 type TocEntry = { id: string; text: string };
 
 /**
- * Shell for /docs/[slug]. Ported from apps/example-react/src/Docs.tsx —
+ * Shell for /docs/[slug]. Ported from apps/demo-react/src/Docs.tsx —
  * same topbar, same left sidebar with sections + on-page TOC, same
  * `prose` article area for the rendered markdown.
  *

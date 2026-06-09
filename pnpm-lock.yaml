@@ -92,11 +92,11 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.19.20)(jsdom@25.0.1)
 
-  apps/example-backend:
+  apps/demo-backend:
     dependencies:
       '@authai-io/server':
-        specifier: workspace:*
-        version: link:../../packages/server
+        specifier: ^0.1.0
+        version: 0.1.0(openai@4.104.0(ws@8.21.0))
       '@hono/node-server':
         specifier: ^1.13.7
         version: 1.19.14(hono@4.12.23)
@@ -117,14 +117,14 @@ importers:
         specifier: ^5.6.3
         version: 5.9.3
 
-  apps/example-nextjs:
+  apps/demo-nextjs:
     dependencies:
       '@authai-io/react':
-        specifier: workspace:*
-        version: link:../../packages/react
+        specifier: ^0.1.0
+        version: 0.1.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@authai-io/server':
-        specifier: workspace:*
-        version: link:../../packages/server
+        specifier: ^0.1.0
+        version: 0.1.0(openai@4.104.0(ws@8.21.0))
       next:
         specifier: ^15.0.3
         version: 15.5.19(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -151,11 +151,11 @@ importers:
         specifier: ^5.6.3
         version: 5.9.3
 
-  apps/example-react:
+  apps/demo-react:
     dependencies:
       '@authai-io/react':
-        specifier: workspace:*
-        version: link:../../packages/react
+        specifier: ^0.1.0
+        version: 0.1.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -369,6 +369,20 @@ packages:
 
   '@asamuzakjp/css-color@3.2.0':
     resolution: {integrity: sha512-K1A6z8tS3XsmCMM86xoWdn7Fkdn9m6RSVtocUrJYIwZnFVkng/PvkEoWtOWmP+Scc6saYWHWZYbndEEXxl24jw==}
+
+  '@authai-io/react@0.1.0':
+    resolution: {integrity: sha512-0eZ65HWd0s6TkSFdmjTmCDDUd2eMleequUgmh6qldKY8TFRpaqt1BFZ2kY8fetE8i83713E3k3POYj1C78QEKw==}
+    peerDependencies:
+      react: '>=18'
+      react-dom: '>=18'
+
+  '@authai-io/server@0.1.0':
+    resolution: {integrity: sha512-mJubaq2B8X89DV+q7dVCZ2sg3CAPe9Y8dwLs0LxLhKHtz+8qVXinF2IdfNGQGHS4Ajpq4gdlKhs8GGeTpfbwLw==}
+    peerDependencies:
+      openai: '>=4'
+    peerDependenciesMeta:
+      openai:
+        optional: true
 
   '@babel/code-frame@7.29.7':
     resolution: {integrity: sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw==}
@@ -2126,6 +2140,17 @@ snapshots:
       '@csstools/css-parser-algorithms': 3.0.5(@csstools/css-tokenizer@3.0.4)
       '@csstools/css-tokenizer': 3.0.4
       lru-cache: 10.4.3
+
+  '@authai-io/react@0.1.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+    dependencies:
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+
+  '@authai-io/server@0.1.0(openai@4.104.0(ws@8.21.0))':
+    dependencies:
+      jose: 5.10.0
+    optionalDependencies:
+      openai: 4.104.0(ws@8.21.0)
 
   '@babel/code-frame@7.29.7':
     dependencies:

@@ -1,4 +1,4 @@
-# example-nextjs — AuthAI SSR demo
+# demo-nextjs — AuthAI SSR demo
 
 Demonstrates server-rendered AuthAI: cookie-backed session storage,
 `<AuthAIProvider initialJwt>` for SSR hydration, and
@@ -7,7 +7,7 @@ Demonstrates server-rendered AuthAI: cookie-backed session storage,
 ```bash
 pnpm install
 pnpm dev:relay    # in the repo root, separate terminal
-pnpm --filter example-nextjs dev
+pnpm --filter demo-nextjs dev
 # open http://localhost:5174
 ```
 

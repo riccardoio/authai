@@ -149,7 +149,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <head>
         {/*
-          Geist + Geist Mono via Google Fonts. The example-react demo loads
+          Geist + Geist Mono via Google Fonts. The demo-react demo loads
           these the same way; preconnect saves one round-trip on first paint.
           next/font/google would self-host the woff2s; tracked as a follow-up
           (perf > parity tradeoff for the launch window).

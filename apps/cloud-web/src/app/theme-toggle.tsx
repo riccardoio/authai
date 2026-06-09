@@ -7,7 +7,7 @@ type Mode = "light" | "dark";
 
 /**
  * Wraps a chunk of content with a `data-theme` attribute that toggles
- * between light and dark, persisted to localStorage. The example-react
+ * between light and dark, persisted to localStorage. The demo-react
  * demo did the same — we keep the storage key under an `authai:` prefix
  * so it doesn't collide with the demo's `authai-demo:theme` key on
  * shared origins.

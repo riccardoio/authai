@@ -1,6 +1,6 @@
 /**
  * Markdown → HTML rendering for the /docs viewer. Ported from
- * apps/example-react/src/markdown.ts — same languages, same GFM config,
+ * apps/demo-react/src/markdown.ts — same languages, same GFM config,
  * same highlight pipeline. Runs server-side in the Next.js page render;
  * the marked + hljs cost is sub-millisecond per page and the route is
  * dynamic so we don't bother caching the HTML output.
@@ -57,7 +57,7 @@ export function renderMarkdown(source: string): string {
 
 /**
  * Slugify a heading's text content for stable in-page anchor links.
- * Matches the slugify used in the example-react Docs viewer so links
+ * Matches the slugify used in the demo-react Docs viewer so links
  * built against either output point at the same anchors.
  */
 export function slugify(text: string): string {

@@ -7,8 +7,9 @@
   "scripts": {
     "dev": "pnpm -r --parallel --filter './apps/*' dev",
     "dev:relay": "pnpm --filter @authai-io/relay-server dev",
-    "dev:example": "pnpm --filter example-react dev",
-    "dev:backend": "pnpm --filter example-backend dev",
+    "dev:demo": "pnpm --filter demo-react dev",
+    "dev:demo:nextjs": "pnpm --filter demo-nextjs dev",
+    "dev:demo:backend": "pnpm --filter demo-backend dev",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "release": "pnpm -r --filter '@authai-io/*' --filter 'authai-cloud' publish --access public --no-git-checks"

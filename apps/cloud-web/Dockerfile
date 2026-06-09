@@ -28,8 +28,8 @@ COPY packages/react/package.json                packages/react/package.json
 COPY apps/cloud-web/package.json                apps/cloud-web/package.json
 COPY apps/cloud-relay-server/package.json       apps/cloud-relay-server/package.json
 COPY apps/relay-server/package.json             apps/relay-server/package.json
-COPY apps/example-react/package.json            apps/example-react/package.json
-COPY apps/example-backend/package.json          apps/example-backend/package.json
+COPY apps/demo-react/package.json            apps/demo-react/package.json
+COPY apps/demo-backend/package.json          apps/demo-backend/package.json
 
 RUN pnpm install --frozen-lockfile \
     --filter @authai-io/cloud-web... \

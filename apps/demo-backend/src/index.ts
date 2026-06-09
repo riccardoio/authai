@@ -11,7 +11,7 @@ const RELAY_URL = process.env.AUTH_AI_RELAY_URL ?? "http://localhost:3000";
 const AUTH_AI_SECRET = process.env.AUTH_AI_SECRET;
 const PORT = Number(process.env.PORT ?? 4000);
 
-// Where the built SPA lives. In the Docker image we COPY example-react/dist
+// Where the built SPA lives. In the Docker image we COPY demo-react/dist
 // next to the backend's source; locally pnpm dev keeps the SPA on its own
 // Vite dev server (5173) so this path is only used in prod-style runs.
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -123,7 +123,7 @@ app.get("*", async (c) => {
     return c.html(html);
   } catch {
     return c.text(
-      "SPA bundle not found. Run `pnpm --filter example-react build` first, or use the Vite dev server.",
+      "SPA bundle not found. Run `pnpm --filter demo-react build` first, or use the Vite dev server.",
       503,
     );
   }

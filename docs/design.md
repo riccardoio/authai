@@ -26,7 +26,7 @@ Three components:
 
 - **Relay** (`packages/relay`) — tiny Hono server. Sidesteps the `auth.openai.com` CORS problem because browsers can't POST there directly. Stateless apart from a 15-minute in-memory session map. Never persists tokens in v1.
 - **SDK** (`packages/sdk`, npm name `chatgpt-connect`) — framework-agnostic core + React entrypoint. `signInWithChatGPT()` + `createClient().chat()`.
-- **Example app** (`apps/example-react`) — Vite + React 18 demo, end-to-end proof.
+- **Example app** (`apps/demo-react`) — Vite + React 18 demo, end-to-end proof.
 
 ## OAuth flow (device code)
 
@@ -87,7 +87,7 @@ Refresh: auto when `expires - Date.now() < 60_000`.
 ```bash
 pnpm install
 pnpm dev:relay    # → http://localhost:3000
-pnpm dev:example  # → http://localhost:5173
+pnpm dev:demo  # → http://localhost:5173
 ```
 
 Click "Sign in with ChatGPT," authorize at the verification URL, type into the chat.

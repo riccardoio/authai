@@ -5,7 +5,7 @@
 #
 # Build context is the monorepo root (Dokku is told via
 # `dokku builder-dockerfile:set authai-nextjs-demo dockerfile-path
-# apps/example-nextjs/Dockerfile`).
+# apps/demo-nextjs/Dockerfile`).
 
 FROM node:22-alpine AS deps
 
@@ -25,12 +25,12 @@ COPY packages/react/package.json                packages/react/package.json
 COPY apps/cloud-web/package.json                apps/cloud-web/package.json
 COPY apps/cloud-relay-server/package.json       apps/cloud-relay-server/package.json
 COPY apps/relay-server/package.json             apps/relay-server/package.json
-COPY apps/example-react/package.json            apps/example-react/package.json
-COPY apps/example-backend/package.json          apps/example-backend/package.json
-COPY apps/example-nextjs/package.json           apps/example-nextjs/package.json
+COPY apps/demo-react/package.json            apps/demo-react/package.json
+COPY apps/demo-backend/package.json          apps/demo-backend/package.json
+COPY apps/demo-nextjs/package.json           apps/demo-nextjs/package.json
 
 RUN pnpm install --frozen-lockfile \
-    --filter example-nextjs... \
+    --filter demo-nextjs... \
     --filter @authai-io/react... \
     --filter @authai-io/server...
 
@@ -49,13 +49,13 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json ./
 # Source for the workspace packages the demo imports + the demo itself.
 COPY packages/react   packages/react
 COPY packages/server  packages/server
-COPY apps/example-nextjs apps/example-nextjs
+COPY apps/demo-nextjs apps/demo-nextjs
 
 # Next.js standalone build. transpilePackages handles the workspace TS
 # packages at bundle time (no separate `pnpm --filter @authai-io/react build`
-# needed — see apps/example-nextjs/next.config.mjs).
+# needed — see apps/demo-nextjs/next.config.mjs).
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN pnpm --filter example-nextjs build
+RUN pnpm --filter demo-nextjs build
 
 # ---------------------------------------------------------------------------
 
@@ -64,10 +64,10 @@ FROM node:22-alpine AS runtime
 WORKDIR /app
 
 # Next.js standalone output: server.js + trimmed node_modules.
-COPY --from=builder /repo/apps/example-nextjs/.next/standalone ./
-COPY --from=builder /repo/apps/example-nextjs/.next/static    ./apps/example-nextjs/.next/static
+COPY --from=builder /repo/apps/demo-nextjs/.next/standalone ./
+COPY --from=builder /repo/apps/demo-nextjs/.next/static    ./apps/demo-nextjs/.next/static
 
-WORKDIR /app/apps/example-nextjs
+WORKDIR /app/apps/demo-nextjs
 
 ENV NODE_ENV=production
 ENV PORT=5000

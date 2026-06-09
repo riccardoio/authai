@@ -521,7 +521,7 @@ a { color: inherit; }
   text-transform: uppercase;
 }
 /* `.landing-preset-row` + `.landing-preset button` were styling
-   leftovers from the example-react demo where this slot held the
+   leftovers from the demo-react demo where this slot held the
    ChatGPT/Grok/Copilot sign-in pills. The cloud-web landing's only
    button inside .landing-preset is the terminal copy icon, which
    has its own (.landing-terminal-copy) styles. Removed the dead
