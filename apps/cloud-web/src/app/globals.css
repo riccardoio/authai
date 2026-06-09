@@ -1885,6 +1885,14 @@ a { color: inherit; }
   border-radius: 999px;
   background: var(--accent);
   box-shadow: 0 0 0 3px rgba(29, 77, 255, 0.18);
+  animation: landing-announce-pulse 2.4s ease-in-out infinite;
+}
+@keyframes landing-announce-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(29, 77, 255, 0.14); }
+  50%      { box-shadow: 0 0 0 6px rgba(29, 77, 255, 0.04); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-announce-dot { animation: none; }
 }
 .landing-announce svg {
   flex-shrink: 0;
@@ -1907,6 +1915,11 @@ a { color: inherit; }
 }
 .landing[data-theme="dark"] .landing-announce-dot {
   box-shadow: 0 0 0 3px rgba(90, 166, 255, 0.22);
+  animation-name: landing-announce-pulse-dark;
+}
+@keyframes landing-announce-pulse-dark {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(90, 166, 255, 0.18); }
+  50%      { box-shadow: 0 0 0 6px rgba(90, 166, 255, 0.05); }
 }
 @media (max-width: 540px) {
   .landing-announce {
