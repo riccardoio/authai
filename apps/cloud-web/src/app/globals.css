@@ -22,6 +22,16 @@
 
   --dur-micro: 140ms;
   --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* === Landing rhythm tokens ===
+     One source of truth for post-hero section spacing + widths.
+     Major sections (flow, security, why, runways) use --section-py-major
+     for symmetric vertical breathing room. Connective bands (demo, platforms)
+     use --section-py-minor so they read as a tight group between majors. */
+  --section-max-w: 1080px;
+  --section-px: 28px;
+  --section-py-major: 64px;
+  --section-py-minor: 20px;
 }
 
 * { box-sizing: border-box; }
@@ -1745,9 +1755,9 @@ a { color: inherit; }
 .landing-flow {
   position: relative;
   z-index: 1;
-  max-width: 1080px;
+  max-width: var(--section-max-w);
   margin: 0 auto;
-  padding: 56px 28px 24px;
+  padding: var(--section-py-major) var(--section-px);
 }
 .landing-flow-heading {
   font-size: 12px;
@@ -1932,7 +1942,7 @@ a { color: inherit; }
 .landing-demo-band {
   display: flex;
   justify-content: center;
-  padding: 20px 24px 8px;
+  padding: var(--section-py-minor) var(--section-px);
 }
 .landing-demo-link {
   display: inline-flex;
@@ -1993,7 +2003,7 @@ a { color: inherit; }
   flex-direction: column;
   align-items: center;
   gap: 14px;
-  padding: 24px 24px 8px;
+  padding: var(--section-py-minor) var(--section-px);
   text-align: center;
 }
 .landing-platforms-label {
@@ -2058,7 +2068,7 @@ a { color: inherit; }
 .landing-security {
   display: flex;
   justify-content: center;
-  padding: 56px 28px 16px;
+  padding: var(--section-py-major) var(--section-px);
 }
 .landing-security-inner {
   max-width: 640px;
@@ -2068,19 +2078,6 @@ a { color: inherit; }
   align-items: center;
   gap: 14px;
 }
-.landing-security-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text-subtle);
-}
-.landing-security-eyebrow svg {
-  color: var(--text-subtle);
-}
 .landing-security-headline {
   margin: 0;
   font-size: 30px;
@@ -2088,6 +2085,13 @@ a { color: inherit; }
   letter-spacing: -0.02em;
   line-height: 1.2;
   color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+.landing-security-headline svg {
+  color: var(--text-subtle);
+  flex-shrink: 0;
 }
 .landing-security-sub {
   margin: 0;
@@ -2125,9 +2129,9 @@ a { color: inherit; }
 .landing-why {
   position: relative;
   z-index: 1;
-  max-width: 1100px;
+  max-width: var(--section-max-w);
   margin: 0 auto;
-  padding: 48px 28px 8px;
+  padding: var(--section-py-major) var(--section-px);
 }
 .landing-why-heading {
   margin: 0 0 28px;
@@ -2193,9 +2197,9 @@ a { color: inherit; }
 /* === Runways — "Two ways to run it" cards === */
 .landing-runways {
   width: 100%;
-  max-width: 1100px;
-  margin: 8px auto 0;
-  padding: 48px 24px 56px;
+  max-width: var(--section-max-w);
+  margin: 0 auto;
+  padding: var(--section-py-major) var(--section-px);
 }
 .landing-runways-heading {
   font-size: 22px;

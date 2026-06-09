@@ -41,7 +41,7 @@ export function LandingClient({ session }: { session: SessionShape }) {
             <span className="landing-announce-dot" aria-hidden="true" />
             <span className="landing-announce-text">
               <strong>Enjoying AuthAI?</strong> Something more ambitious is in
-              the works — get in touch
+              the works. Get in touch
             </span>
             <svg
               width="12"
@@ -270,19 +270,15 @@ export function LandingClient({ session }: { session: SessionShape }) {
 
           <section className="landing-security" aria-labelledby="security-heading">
             <div className="landing-security-inner">
-              <span className="landing-security-eyebrow">
-                <LockIcon />
-                Security
-              </span>
               <h2 id="security-heading" className="landing-security-headline">
+                <LockIcon />
                 We can&apos;t read your users&apos; AI tokens.
               </h2>
               <p className="landing-security-sub">
                 Every user&apos;s OAuth credentials are encrypted with a
                 fresh per-record AES-256 key. That key never lives on our
-                servers — it&apos;s embedded in the JWT issued to the
-                user. A full database leak still leaves the credentials
-                opaque.
+                servers. It&apos;s embedded in the JWT issued to the user.
+                A full database leak still leaves the credentials opaque.
               </p>
               <Link href="/docs/security" className="landing-security-link">
                 Read the security model
@@ -311,8 +307,8 @@ export function LandingClient({ session }: { session: SessionShape }) {
                 <h3 className="landing-why-card-title">Zero inference cost</h3>
                 <p className="landing-why-card-body">
                   Users bring their own ChatGPT, Grok, or Copilot
-                  subscription. Your bill doesn&apos;t scale with usage —
-                  theirs does.
+                  subscription. Your bill doesn&apos;t scale with usage.
+                  Theirs does.
                 </p>
               </article>
               <article className="landing-why-card">
@@ -357,8 +353,8 @@ export function LandingClient({ session }: { session: SessionShape }) {
                 <h3 className="landing-runway-title">Hosted, free</h3>
                 <p className="landing-runway-body">
                   We run the relay at <code>relay.authai.io</code>. You write
-                  zero infra — sign in with GitHub, create an app, get a key.
-                  ~30 seconds.
+                  zero infra. Sign in with GitHub, create an app, get a key.
+                  About 30 seconds.
                 </p>
                 <Link
                   href={session ? "/dashboard" : "/sign-in"}
