@@ -31,38 +31,65 @@ export default async function OpengraphImage() {
           overflow: "hidden",
         }}
       >
-        {/* Aurora — two soft radial blobs in the upper third */}
+        {/* Aurora — soft lime blob upper-left.
+            Satori only accepts simple radial-gradient (circle at X% Y%);
+            the explicit-ellipse-size form silently no-ops, hence two
+            separate divs instead of one stacked backgroundImage. */}
         <div
           style={{
             position: "absolute",
-            inset: 0,
+            top: -200,
+            left: -200,
+            width: 900,
+            height: 900,
             display: "flex",
             backgroundImage:
-              "radial-gradient(ellipse 70% 55% at 22% 18%, rgba(57, 255, 20, 0.30), transparent 65%), " +
-              "radial-gradient(ellipse 60% 50% at 78% 28%, rgba(0, 255, 136, 0.24), transparent 70%)",
+              "radial-gradient(circle at center, rgba(57, 255, 20, 0.45), rgba(57, 255, 20, 0) 70%)",
           }}
         />
-        {/* Grid overlay — 56px cell, faint ink */}
+        {/* Aurora — soft green blob upper-right */}
+        <div
+          style={{
+            position: "absolute",
+            top: -150,
+            right: -200,
+            width: 850,
+            height: 850,
+            display: "flex",
+            backgroundImage:
+              "radial-gradient(circle at center, rgba(0, 255, 136, 0.38), rgba(0, 255, 136, 0) 72%)",
+          }}
+        />
+        {/* Grid overlay — vertical lines */}
         <div
           style={{
             position: "absolute",
             inset: 0,
             display: "flex",
             backgroundImage:
-              "linear-gradient(to right, rgba(0, 0, 0, 0.045) 1px, transparent 1px), " +
-              "linear-gradient(to bottom, rgba(0, 0, 0, 0.045) 1px, transparent 1px)",
+              "linear-gradient(to right, rgba(0, 0, 0, 0.05) 1px, rgba(0, 0, 0, 0) 1px)",
             backgroundSize: "56px 56px",
           }}
         />
-        {/* Bottom wash — fades aurora + grid out toward the footer line
-            so the headline reads on near-white */}
+        {/* Grid overlay — horizontal lines */}
         <div
           style={{
             position: "absolute",
             inset: 0,
             display: "flex",
             backgroundImage:
-              "linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0) 35%, rgba(255,255,255,0.85) 80%, rgba(255,255,255,1) 100%)",
+              "linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 1px, rgba(0, 0, 0, 0) 1px)",
+            backgroundSize: "56px 56px",
+          }}
+        />
+        {/* Bottom wash — fades aurora + grid out toward the footer */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            backgroundImage:
+              "linear-gradient(to bottom, rgba(255, 255, 255, 0) 35%, rgba(255, 255, 255, 0.92) 80%, rgba(255, 255, 255, 1) 100%)",
           }}
         />
         <div
