@@ -1,5 +1,10 @@
 # AuthAI
 
+[![npm version](https://img.shields.io/npm/v/%40authai-io%2Freact?label=%40authai-io%2Freact)](https://www.npmjs.com/package/@authai-io/react)
+[![npm version](https://img.shields.io/npm/v/authai-cloud?label=authai-cloud)](https://www.npmjs.com/package/authai-cloud)
+[![license](https://img.shields.io/npm/l/%40authai-io%2Freact)](./LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/authai-io/authai?style=flat&logo=github)](https://github.com/authai-io/authai/stargazers)
+
 **Sign in with ChatGPT — for app builders.**
 
 > [!NOTE]
