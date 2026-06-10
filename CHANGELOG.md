@@ -4,6 +4,12 @@ All notable changes to AuthAI are documented here. The format is based on [Keep 
 
 This file tracks all six npm packages collectively. Per-package CHANGELOGs may be added later if the release cadences diverge.
 
+## [Unreleased]
+
+### Changed
+
+- **`@authai-io/react`**: Connect dialog redesign. The consent step is now a provider-specific trust-bullet screen ("You sign in on OpenAI's site / No new bill / Disconnect anytime") and is shown only when the app presets a provider; `signIn()` with no provider opens the provider picker directly, matching the existing singleton behavior. Every dialog step gains a "Secured by AuthAI" footer linking to the security docs. The code step's primary button now reads "Open ChatGPT" (was "Continue").
+
 ## [0.1.1] — 2026-06-09
 
 ### Fixed

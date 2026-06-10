@@ -74,11 +74,11 @@ You host it. See [Installation](./installation.md).
 
 The frontend SDK. Three exports:
 
-- `<AuthAIProvider relayUrl appName theme storage>` — wraps your app, mounts the sign-in dialog
-- `<SignIn provider?>` — sign-in button. Without `provider`, the user picks. With it, you skip the picker.
-- `useAuthAI()` — returns `{ jwt, provider, isSignedIn, signIn, signOut }`
+- `<AuthAIProvider relayUrl appName theme storage>`: wraps your app and mounts the sign-in dialog
+- `<SignIn provider?>`: sign-in button. Without `provider`, the user opens the picker. With it, the user sees provider-specific consent before the provider flow.
+- `useAuthAI()`: returns `{ jwt, provider, isSignedIn, signIn, signOut }`
 
-The dialog is a polished modal: explanation → provider picker → device-code display → success or error. Themed via the `theme` prop, ~6 KB compressed, no Tailwind dependency.
+The dialog is a polished modal: provider-specific consent for preset sign-ins, provider picker for no-preset sign-ins, then device-code display, success, or error. Themed via the `theme` prop, ~6 KB compressed, no Tailwind dependency.
 
 ### `@authai-io/server`
 

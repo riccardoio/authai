@@ -113,10 +113,10 @@ Local decode never hits the relay. **Caveat:** revoked tokens still pass local d
 ### Provider picker vs preset
 
 ```tsx
-// Picker — user chooses between ChatGPT, Grok, Copilot.
+// No preset: user chooses between ChatGPT, Grok, Copilot.
 <SignIn>Sign in</SignIn>
 
-// Preset — skips the picker, goes directly to that provider's flow.
+// Preset: provider-specific consent, then that provider's flow.
 <SignIn provider="openai">Sign in with ChatGPT</SignIn>
 <SignIn provider="xai">Sign in with Grok</SignIn>
 <SignIn provider="github">Sign in with Copilot</SignIn>
