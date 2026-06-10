@@ -1,4 +1,5 @@
 import type { ProviderId } from "../auth.js";
+import { DialogFooter } from "./Footer.js";
 import { ErrorIcon } from "./icons.js";
 import { PROVIDER_META } from "./providers.js";
 
@@ -35,6 +36,7 @@ export function StepError({
       <button type="button" className="authai-button-secondary" onClick={onCancel}>
         {presetProvider ? "Close" : "Cancel"}
       </button>
+      <DialogFooter />
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import type { ProviderId } from "../auth.js";
+import { DialogFooter } from "./Footer.js";
 import { CheckIcon, CopyIcon, ExternalLinkIcon } from "./icons.js";
 import { PROVIDER_META } from "./providers.js";
 
@@ -43,12 +44,12 @@ export function Step2({
       <p className="authai-code-label">Your authorization code</p>
 
       <p className="authai-muted">
-        Paste this code on {providerName} to finish — it's already in your clipboard.
+        Paste this code on {providerName} to finish. It&apos;s already in your clipboard.
       </p>
 
       {!error && (
         <button type="button" className="authai-button-primary" onClick={onOpenProvider}>
-          Continue
+          Open {providerName}
           <ExternalLinkIcon />
         </button>
       )}
@@ -65,6 +66,7 @@ export function Step2({
       <button type="button" className="authai-button-secondary" onClick={onCancel}>
         Cancel
       </button>
+      <DialogFooter />
 
       {toastVisible && (
         <div className="authai-toast" role="status">

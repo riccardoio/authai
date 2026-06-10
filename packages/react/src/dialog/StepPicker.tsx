@@ -1,4 +1,5 @@
 import type { ProviderId } from "../auth.js";
+import { DialogFooter } from "./Footer.js";
 import { ChevronRightIcon } from "./icons.js";
 import { PROVIDER_META, PROVIDER_ORDER } from "./providers.js";
 
@@ -42,6 +43,7 @@ export function StepPicker({ appName: _appName, onPick, onCancel }: StepPickerPr
       <button type="button" className="authai-button-secondary" onClick={onCancel}>
         Cancel
       </button>
+      <DialogFooter />
     </div>
   );
 }

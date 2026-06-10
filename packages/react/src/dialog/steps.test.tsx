@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { DialogFooter } from "./Footer.js";
 import { Step1 } from "./Step1.js";
+import { Step2 } from "./Step2.js";
+import { StepError } from "./StepError.js";
+import { StepPicker } from "./StepPicker.js";
 
 const noop = () => {};
 
@@ -54,5 +57,38 @@ describe("Step1 consent screen", () => {
     );
     const btn = screen.getByRole("button", { name: "Preparing…" });
     expect(btn).toBeDisabled();
+  });
+});
+
+describe("StepPicker", () => {
+  it("keeps its copy and gains the footer", () => {
+    render(<StepPicker appName="AuthAI Demo" onPick={noop} onCancel={noop} />);
+    expect(screen.getByText("Choose your AI provider")).toBeInTheDocument();
+    expectSecuredFooter();
+  });
+});
+
+describe("Step2 code screen", () => {
+  it("names the destination on the button and drops the em-dash", () => {
+    const { container } = render(
+      <Step2 provider="openai" userCode="K7KQ-VL2N" verificationUrl="https://x"
+        error={null} toastVisible={false} onCopy={noop} onOpenProvider={noop} onCancel={noop} />,
+    );
+    expect(screen.getByRole("button", { name: /Open ChatGPT/ })).toBeInTheDocument();
+    expect(screen.getByText(/It's already in your clipboard\./)).toBeInTheDocument();
+    expect(container.textContent).not.toContain("—");
+    expectSecuredFooter();
+  });
+});
+
+describe("StepError", () => {
+  it("keeps its copy and gains the footer", () => {
+    render(
+      <StepError provider="openai" presetProvider={null} message="device_code expired"
+        onTryDifferentProvider={noop} onCancel={noop} />,
+    );
+    expect(screen.getByText("Couldn't connect to ChatGPT")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Try a different provider" })).toBeInTheDocument();
+    expectSecuredFooter();
   });
 });
