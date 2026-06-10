@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@authai-io/react": "^0.1.0",
+    "@authai-io/react": "workspace:*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
