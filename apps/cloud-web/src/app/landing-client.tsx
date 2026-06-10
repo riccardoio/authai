@@ -40,7 +40,7 @@ export function LandingClient({ session }: { session: SessionShape }) {
           >
             <span className="landing-announce-dot" aria-hidden="true" />
             <span className="landing-announce-text">
-              <strong>Enjoying AuthAI?</strong> Something more ambitious is in
+              <strong>Like what you see?</strong> Something more ambitious is in
               the works. Get in touch
             </span>
             <svg
@@ -148,8 +148,8 @@ export function LandingClient({ session }: { session: SessionShape }) {
                 <h3 className="landing-flow-step-title">Calls land on their plan</h3>
                 <p className="landing-flow-step-body">
                   Every model call bills against the user's subscription,
-                  not yours. We never see their AI tokens. They&apos;re
-                  encrypted before they reach us.
+                  not yours. Their tokens are stored encrypted with a key we
+                  never keep. A database leak exposes nothing.
                 </p>
               </li>
             </ol>
@@ -263,8 +263,8 @@ export function LandingClient({ session }: { session: SessionShape }) {
               </a>
             </div>
             <p className="landing-platforms-hint">
-              Tell their AI: <em>“Read https://authai.io/llms.txt”</em>. It
-              generates the integration for you.
+              Tell your coding agent: <em>“Read https://authai.io/llms.txt”</em>.
+              It generates the integration for you.
             </p>
           </section>
 
@@ -272,7 +272,7 @@ export function LandingClient({ session }: { session: SessionShape }) {
             <div className="landing-security-inner">
               <h2 id="security-heading" className="landing-security-headline">
                 <LockIcon />
-                We can&apos;t read your users&apos; AI tokens.
+                We can&apos;t read your users&apos; tokens.
               </h2>
               <p className="landing-security-sub">
                 Every user&apos;s OAuth credentials are encrypted with a
@@ -308,7 +308,7 @@ export function LandingClient({ session }: { session: SessionShape }) {
                 <p className="landing-why-card-body">
                   Users bring their own ChatGPT, Grok, or Copilot
                   subscription. Your bill doesn&apos;t scale with usage.
-                  Theirs does.
+                  Their plan already covers it.
                 </p>
               </article>
               <article className="landing-why-card">
@@ -352,7 +352,7 @@ export function LandingClient({ session }: { session: SessionShape }) {
                 <span className="landing-runway-tag">AuthAI Cloud</span>
                 <h3 className="landing-runway-title">Hosted, free</h3>
                 <p className="landing-runway-body">
-                  We run the relay at <code>relay.authai.io</code>. You write
+                  We host the relay at <code>relay.authai.io</code>. You run
                   zero infra. Sign in with GitHub, create an app, get a key.
                   About 30 seconds.
                 </p>

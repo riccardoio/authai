@@ -6,7 +6,7 @@ const SITE_URL = "https://authai.io";
 // survives both Google's ~160-char SERP cut and social previews' ~125-char cut
 // without truncating the punchline. Colon (not em-dash) is the separator:
 // em-dash is banned in user-visible strings per the design-taste rules.
-const SITE_TITLE = "AuthAI: Sign in with ChatGPT, Grok, or Copilot subscription";
+const SITE_TITLE = "AuthAI: Sign in with a ChatGPT, Grok, or Copilot subscription";
 const SITE_DESCRIPTION =
   "Build AI products without the AI bill. Your users sign in with their ChatGPT, Grok, or Copilot subscription, and their plan covers every model call.";
 
