@@ -1,6 +1,6 @@
 {
   "name": "@authai-io/react",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "AuthAI React SDK — <SignIn>, <AuthAIProvider>, useAuthAI(). Sign in with ChatGPT / Grok / Copilot.",
   "homepage": "https://authai.io",
   "repository": {

@@ -24,6 +24,7 @@ export type SingletonSnapshot = {
   provider: ProviderId | null;
   isSignedIn: boolean;
   pendingProvider: ProviderId | null;
+  originStep: "explain" | "picker" | null;
   verification: { userCode: string; verificationUrl: string } | null;
   error: string | null;
   phase: "idle" | "explain" | "picker" | "fetching" | "code" | "error";
@@ -53,6 +54,7 @@ function makeInitialState(): SingletonSnapshot {
     provider: null,
     isSignedIn: false,
     pendingProvider: null,
+    originStep: null,
     verification: null,
     error: null,
     phase: "idle",
@@ -179,6 +181,7 @@ export async function signInSingleton(provider?: ProviderId): Promise<void> {
     store.state = {
       ...store.state,
       pendingProvider: provider,
+      originStep: "explain",
       verification: null,
       error: null,
       phase: "explain",
@@ -187,6 +190,7 @@ export async function signInSingleton(provider?: ProviderId): Promise<void> {
     store.state = {
       ...store.state,
       pendingProvider: null,
+      originStep: "picker",
       verification: null,
       error: null,
       phase: "picker",
@@ -214,18 +218,27 @@ export async function confirmSingletonExplain(): Promise<void> {
  * from the picker UI.
  */
 export async function pickSingletonProvider(provider: ProviderId): Promise<void> {
+  const store = getStore();
+  store.state = {
+    ...store.state,
+    originStep: "picker",
+  };
+  emit(store);
   await startSingletonFlow(provider);
 }
 
 async function startSingletonFlow(provider: ProviderId): Promise<void> {
   const store = getStore();
   if (!store.config.relayUrl || !store.config.appName) return;
+  const originStep =
+    store.state.originStep ?? (store.state.phase === "picker" ? "picker" : "explain");
   store.abort?.abort();
   const ctrl = new AbortController();
   store.abort = ctrl;
   store.state = {
     ...store.state,
     pendingProvider: provider,
+    originStep,
     phase: "fetching",
     error: null,
     verification: null,
@@ -269,6 +282,7 @@ async function startSingletonFlow(provider: ProviderId): Promise<void> {
     store.state = {
       ...store.state,
       pendingProvider: null,
+      originStep: null,
       verification: null,
       phase: "error",
       error: (err as Error).message,
@@ -305,6 +319,7 @@ export function cancelSingletonFlow(): void {
     ...store.state,
     phase: "idle",
     pendingProvider: null,
+    originStep: null,
     verification: null,
     error: null,
   };

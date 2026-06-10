@@ -4,6 +4,12 @@ All notable changes to AuthAI are documented here. The format is based on [Keep 
 
 This file tracks all six npm packages collectively. Per-package CHANGELOGs may be added later if the release cadences diverge.
 
+## [0.2.1] - 2026-06-10
+
+### Fixed
+
+- **`@authai-io/react`**: Keep the provider picker as the visible dialog step while a no-preset singleton sign-in starts the selected provider flow. This fixes a brief consent-screen flash before the device-code screen in apps using `configureAuthAI()` and `<SignIn>` without a preset provider.
+
 ## [0.2.0] - 2026-06-10
 
 ### Changed

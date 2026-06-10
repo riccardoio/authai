@@ -32,9 +32,9 @@ export function SingletonDialogHost() {
     if (snap.phase === "error") return "error";
     if (snap.phase === "picker") return "picker";
     if (snap.phase === "code") return "code";
-    if (snap.phase === "fetching") return snap.pendingProvider ? "explain" : "picker";
+    if (snap.phase === "fetching") return snap.originStep ?? "picker";
     return "explain";
-  }, [snap.phase, snap.pendingProvider]);
+  }, [snap.phase, snap.originStep]);
 
   if (!container) return null;
 

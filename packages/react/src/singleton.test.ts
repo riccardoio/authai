@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getSingletonSnapshot,
   subscribeSingleton,
@@ -10,6 +10,12 @@ import {
   confirmSingletonExplain,
   pickSingletonProvider,
 } from "./singleton.js";
+
+const originalFetch = globalThis.fetch;
+
+afterEach(() => {
+  globalThis.fetch = originalFetch;
+});
 
 describe("singleton store", () => {
   beforeEach(() => resetSingletonForTests());
@@ -149,7 +155,22 @@ describe("singleton store", () => {
     const snap = getSingletonSnapshot();
     expect(snap.phase).toBe("explain");
     expect(snap.pendingProvider).toBe("openai");
+    expect(snap.originStep).toBe("explain");
     expect(snap.verification).toBeNull();
+  });
+
+  it("picker-selected provider keeps picker as the origin while fetching", async () => {
+    configureSingleton({ relayUrl: "https://r", appName: "T" });
+    await signInSingleton();
+    globalThis.fetch = vi.fn(() => new Promise<Response>(() => {})) as any;
+
+    void pickSingletonProvider("openai");
+
+    const snap = getSingletonSnapshot();
+    expect(snap.phase).toBe("fetching");
+    expect(snap.pendingProvider).toBe("openai");
+    expect(snap.originStep).toBe("picker");
+    cancelSingletonFlow();
   });
 });
 

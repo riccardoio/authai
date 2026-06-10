@@ -8,7 +8,7 @@
     "start": "next start -p 5174"
   },
   "dependencies": {
-    "@authai-io/react": "^0.2.0",
+    "@authai-io/react": "^0.2.1",
     "@authai-io/server": "^0.1.0",
     "next": "^15.0.3",
     "openai": "^4.77.0",
